@@ -6,7 +6,8 @@ from picamera.array import PiRGBArray
 from picamera import PiCamera
 import time
 import cv2
-import rospy 
+import rospy
+from geometry_msgs.msg import Point32
  
 # initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
@@ -58,7 +59,7 @@ if __name__ == '__main__':
 
 		#ANGLE CALCULATION FOR BLUE BODY
 
-		angles = Point32(beta1,beta2,beta3)
+		angles = Point32(beta13,beta21,beta32)
 	    pub.publish(angles)
 	 
 		# if the `q` key was pressed, break from the loop
