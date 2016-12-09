@@ -12,7 +12,7 @@ using namespace cv;
 int distx,disty;
 int main( int argc, char** argv )
 {
-
+ 
   Mat img_1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
   Mat img_2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
 
