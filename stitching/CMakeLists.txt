@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 2.8.3)
 
 project(stitcher)
 
-ADD_DEFINITIONS(-std=c++0x)
+ADD_DEFINITIONS(-std=c++0x )
+
 
 
 ## Find catkin and any catkin packages
@@ -47,7 +48,7 @@ include_directories(
 
 
 add_executable(stitcher_node src/stitch.cpp)
-target_link_libraries(stitcher_node ${catkin_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(stitcher_node ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(stitcher_node roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge)
 
 
