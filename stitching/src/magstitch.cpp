@@ -13,7 +13,7 @@
 #include "ardrone_autonomy/Navdata.h"
 #include <mutex>
 
-#define Y_THRESHOLD 10
+#define Y_THRESHOLD 15
 #define DIVISION 3
 
 using namespace cv;
@@ -30,11 +30,15 @@ Mat currImage,stitchedImage;
 int complete=0;
 Mat img_1,img_2,prevframe;
 
+int firstAngle=0;
+
 void stitchImages()
 {
-  for (int iter=0;iter<36;iter++)
+  for (int iter=36;iter>0;iter--)
   {
-      img_2 = images[iter];
+   // imshow("left", images[(firstAngle+iter)%36]);
+
+      img_2 = images[(firstAngle+iter)%36];
       if(img_1.empty())
       {
         cout <<"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"<<endl;
@@ -43,7 +47,8 @@ void stitchImages()
 
       img_1 = prevframe;
 
-
+      //imshow("left", img_1);
+     // imshow("right", img_2);
       //-- Step 1: Detect the keypoints using SURF Detector
       int minHessian = 400;
 
@@ -95,7 +100,7 @@ void stitchImages()
                    vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
       //-- Show detected matches
-      imshow( "Good Matches", img_matches );
+    //  imshow( "Good Matches", img_matches );
       int less_dist=0;
       Mat img1cut,img2cut;
       for( int i = 0; i < (int)good_matches.size(); i++ )
@@ -137,19 +142,16 @@ void stitchImages()
       Mat right(result, Rect(sz1.width, 0, sz2.width, sz1.height));
       img2cut.copyTo(right);
      // imshow("left", left);
-     // imshow("right", right);
+      //imshow("right", right);
       Mat concat;
       hconcat(left,right,concat);
+      prevframe=concat;
       imshow("result", concat);
 
       cout<<concat.cols<<endl;
 
-      prevframe=concat;
-     if(waitKey(30) == 27) //wait for 'esc' key press for 30 ms. If 'esc' key is pressed, break loop
-     {
-              std::cout << "esc key is pressed by user" << std::endl; 
-              break; 
-     }
+      waitKey(10);
+     
   }
   return;
 }
@@ -184,6 +186,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       currAngleLock.lock();
       if(images[(currAngle+180)/10].empty())
       {
+        if(complete==0)
+        {
+            firstAngle=(currAngle+180)/10;
+        }
        // cout<<"first"<<endl;
         images[(currAngle+180)/10]=currImage;
         complete++;
@@ -193,11 +199,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       completeLock.unlock();
     }
 
-  if (complete==36)
-  {
-    complete++;
-    stitchImages();
-  }
+    if (complete==36)
+    {
+      complete++;
+      stitchImages();
+    }
 
     //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
    // cv::waitKey(3);
@@ -209,6 +215,7 @@ void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg)
   //  cout<<"rotZ is"<< msg->rotZ <<endl;
     currAngle=msg->rotZ;
   currAngleLock.unlock();
+
 }
 
 int main(int argc, char **argv)
