@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 	message_generation 
 	image_transport
 	cv_bridge
+	ardrone_autonomy
 )
 
 find_package( OpenCV REQUIRED)
@@ -30,7 +31,7 @@ find_package( OpenCV REQUIRED)
 ## Declare a catkin package
 catkin_package(
 	INCLUDE_DIRS include
-	CATKIN_DEPENDS roscpp rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge
+	CATKIN_DEPENDS roscpp rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge ardrone_autonomy
 	)
 	
 
@@ -49,7 +50,11 @@ include_directories(
 
 add_executable(stitcher_node src/stitch.cpp)
 target_link_libraries(stitcher_node ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
-add_dependencies(stitcher_node roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge)
+add_dependencies(stitcher_node roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
+
+add_executable(magstitch src/magstitch.cpp)
+target_link_libraries(magstitch ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(magstitch roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
 
 

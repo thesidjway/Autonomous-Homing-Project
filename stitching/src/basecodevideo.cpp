@@ -7,7 +7,8 @@
 # include "opencv2/highgui/highgui.hpp"
 # include "opencv2/nonfree/features2d.hpp"
 
-#define Y_THRESHOLD 5
+#define Y_THRESHOLD 10
+#define DIVISION 2
 using namespace cv;
 using namespace std;
 
@@ -18,7 +19,7 @@ Mat img_1,img_2;
 int main( int argc, char** argv )
 {
   int iterator=0;
-  VideoCapture cap("destination.mp4"); 
+  VideoCapture cap("lab.mp4"); 
   std::cout<<cap.get(CV_CAP_PROP_FRAME_COUNT);
   for(iterator=0;iterator<cap.get(CV_CAP_PROP_FRAME_COUNT);iterator++)
   {
@@ -83,7 +84,7 @@ int main( int argc, char** argv )
                  vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
     //-- Show detected matches
-    // imshow( "Good Matches", img_matches );
+    imshow( "Good Matches", img_matches );
     int less_dist=0;
     Mat img1cut,img2cut;
     for( int i = 0; i < (int)good_matches.size(); i++ )
@@ -102,7 +103,7 @@ int main( int argc, char** argv )
     	{
     		less_dist++;
     	}
-    	if(less_dist>(int)good_matches.size()/2)
+    	if(less_dist>(int)good_matches.size()/DIVISION)
     	{
     		Rect img1roi(0,0,apt.x,img_1.rows);
     		img1cut=img_1(img1roi);
@@ -128,8 +129,8 @@ int main( int argc, char** argv )
     img1cut.copyTo(left);
     Mat right(result, Rect(sz1.width, 0, sz2.width, sz1.height));
     img2cut.copyTo(right);
-    imshow("left", left);
-    imshow("right", right);
+   // imshow("left", left);
+   // imshow("right", right);
     Mat concat;
     hconcat(left,right,concat);
     imshow("result", concat);
