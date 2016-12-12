@@ -56,6 +56,10 @@ add_executable(magstitch src/magstitch.cpp)
 target_link_libraries(magstitch ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(magstitch roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
+add_executable(magdetect src/magdetect.cpp)
+target_link_libraries(magdetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(magdetect roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
+
 
 
 
