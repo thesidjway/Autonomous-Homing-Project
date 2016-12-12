@@ -40,23 +40,42 @@ void detectFeatures()
   for (int iter=0;iter<NUMIMAGES;iter++)
   {
     Mat element = getStructuringElement( MORPH_CROSS,Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
-    Mat srcred1,srcred2,srcred,srcwhite,dilatedRed,dilatedWhite,boundary;
+
+    Mat srcred1,srcred2,srcred,srcwhite,dilatedRed,dilatedWhite,srcblue,srcgreen,dilatedBlue,dilatedGreen;
+    Mat boundaryGB, boundaryRW, boundaryGW, boundaryBW, boundaryRG, boundaryBR;
     Mat detectionImg=images[iter];
     Mat detectionImgHSV;
-
     cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
-    inRange(detectionImgHSV,Scalar(0,70,30),Scalar(15,255,255),srcred1);
-    inRange(detectionImgHSV,Scalar(165,70,30),Scalar(180,255,255),srcred2);
 
+    inRange(detectionImgHSV,Scalar(0,70,70),Scalar(15,255,255),srcred1);
+    inRange(detectionImgHSV,Scalar(165,70,70),Scalar(180,255,255),srcred2);
     bitwise_or(srcred1,srcred2,srcred);
     inRange(detectionImg,Scalar(140,140,140),Scalar(255,255,255),srcwhite);
-    
+    inRange(detectionImgHSV,Scalar(40,70,70),Scalar(70,255,255),srcgreen);
+    inRange(detectionImg,Scalar(85,70,70),Scalar(115,255,255),srcblue);
+
     dilate( srcwhite, dilatedWhite, element );
     dilate( srcred, dilatedRed, element );
+    dilate( srcblue, dilatedBlue, element );
+    dilate( srcgreen, dilatedGreen, element );
 
-    bitwise_and(dilatedRed,dilatedWhite,boundary);
+    bitwise_and(dilatedGreen,dilatedBlue,boundaryGB);
+    imshow("BLUEGREEN",boundaryGB);
 
-    imshow("AfterAND",boundary);
+    bitwise_and(dilatedGreen,dilatedWhite,boundaryGW);
+    imshow("GREENWHITE",boundaryGW);
+
+    bitwise_and(dilatedWhite,dilatedBlue,boundaryBW);
+    imshow("BLUEWHITE",boundaryBW);
+
+    bitwise_and(dilatedRed,dilatedWhite,boundaryRW);
+    imshow("REDWHITE",boundaryRW);
+
+    bitwise_and(dilatedRed,dilatedGreen,boundaryRG);
+    imshow("REDGREEN",boundaryRG);
+
+    bitwise_and(dilatedRed,dilatedBlue,boundaryBR);
+    imshow("BLUERED",boundaryBR);
 
     waitKey(0);
   }
@@ -94,11 +113,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       int indexVal=floor((currAngle+180)/360.0*NUMIMAGES);
       if(images[indexVal].empty())
       {
-        // if(complete==0)
-        // {
-        //     firstAngle=indexVal;
-        // }
-       // cout<<"first"<<endl;
         images[indexVal]=currImage;
         complete++;
       }
@@ -112,9 +126,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       complete++;
       detectFeatures();
     }
-
-    //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-   // cv::waitKey(3);
 }
 
 void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
@@ -134,8 +145,6 @@ int main(int argc, char **argv)
   image_transport::ImageTransport it(nh);
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback);
   ros::Subscriber sub2 = nh.subscribe<ardrone_autonomy::Navdata>("/ardrone/navdata", 1, NavcallBack); 
-
-
   
 
   ros::spin();
