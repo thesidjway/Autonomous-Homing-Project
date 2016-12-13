@@ -18,6 +18,8 @@
 #define NUMIMAGES 36
 #define dilation_size 2
 #define cannythresh 100
+#define POLYDP 0.001
+
 using namespace cv;
 using namespace std;
 
@@ -38,16 +40,11 @@ RNG rng(12345);
 
 int countEdges(Mat * edgesrc)
 {
-  Mat src_gray= *edgesrc;
-  Mat canny_output;
-  vector<vector<Point>> contours;
-  vector<Vec4i> hierarchy;
-  Canny( src_gray, canny_output, cannythresh, cannythresh*2, 3 );
-  findContours( canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-  vector<vector<Point>> contours_poly( contours.size() );
-
-
+  Mat hull= *edgesrc;
 }
+
+
+
 void detectFeatures()
 {
 
@@ -56,7 +53,7 @@ void detectFeatures()
     Mat element = getStructuringElement( MORPH_CROSS,Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
 
     Mat srcred1,srcred2,srcred,srcwhite,dilatedRed,dilatedWhite,srcblue,srcgreen,dilatedBlue,dilatedGreen;
-    Mat boundaryGB, boundaryRW, boundaryGW, boundaryBW, boundaryRG, boundaryBR;
+    Mat boundary[6];//boundaryGB, boundaryRW, boundaryGW, boundaryBW, boundaryRG, boundaryBR;
     Mat detectionImg=images[iter];
     Mat detectionImgHSV;
     cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
@@ -73,35 +70,59 @@ void detectFeatures()
     dilate( srcblue, dilatedBlue, element );
     dilate( srcgreen, dilatedGreen, element );
 
-    bitwise_and(dilatedGreen,dilatedBlue,boundaryGB);
-    imshow("BLUEGREEN",boundaryGB);
+    bitwise_and(dilatedGreen,dilatedBlue,boundary[0]);
+    imshow("BLUEGREEN",boundary[0]);
 
-    bitwise_and(dilatedGreen,dilatedWhite,boundaryGW);
-    imshow("GREENWHITE",boundaryGW);
+    bitwise_and(dilatedGreen,dilatedWhite,boundary[1]);
+    imshow("GREENWHITE",boundary[1]);
 
-    bitwise_and(dilatedWhite,dilatedBlue,boundaryBW);
-    imshow("BLUEWHITE",boundaryBW);
+    bitwise_and(dilatedWhite,dilatedBlue,boundary[2]);
+    imshow("BLUEWHITE",boundary[2]);
 
-    bitwise_and(dilatedRed,dilatedWhite,boundaryRW);
-    imshow("REDWHITE",boundaryRW);
+    bitwise_and(dilatedRed,dilatedWhite,boundary[3]);
+    imshow("REDWHITE",boundary[3]);
 
-    bitwise_and(dilatedRed,dilatedGreen,boundaryRG);
-    imshow("REDGREEN",boundaryRG);
+    bitwise_and(dilatedRed,dilatedGreen,boundary[4]);
+    imshow("REDGREEN",boundary[4]);
 
-    bitwise_and(dilatedRed,dilatedBlue,boundaryBR);
-    imshow("BLUERED",boundaryBR);
+    bitwise_and(dilatedRed,dilatedBlue,boundary[5]);
+    imshow("BLUERED",boundary[5]);
 
-    vector<vector<Point>> contoursGB, contoursGW, contoursBW, contoursRW, contoursRG, contoursBR;
-    vector<Vec4i> hierarchyGB, hierarchyGW, hierarchyBW, hierarchyRW, hierarchyRG, hierarchyBR;
+    vector<vector<Point>> contours[6]; //contoursGB, contoursGW, contoursBW, contoursRW, contoursRG, contoursBR;
+    vector<Vec4i> hierarchy[6]; //hierarchy GB, hierarchyGW, hierarchyBW, hierarchyRW, hierarchyRG, hierarchyBR;
 
-    findContours( boundaryGB, contoursGB, hierarchyGB, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    findContours( boundaryGW, contoursGW, hierarchyGW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    findContours( boundaryBW, contoursBW, hierarchyBW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    findContours( boundaryRW, contoursRW, hierarchyRW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    findContours( boundaryRG, contoursRG, hierarchyRG, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    findContours( boundaryBR, contoursBR, hierarchyBR, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    for (int clr=0;clr<6;clr++)
+    {
+       findContours( boundary[clr], contours[clr], hierarchy[clr], CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    }
 
-    
+    int largestArea[]={-1,-1,-1,-1,-1,-1};
+    int largestContourIndex[]={-1,-1,-1,-1,-1,-1};
+
+    for(int clr=0;clr<6;clr++)
+    {
+      for( int cnt = 0; cnt< contours[clr].size(); cnt++ ) 
+      {
+         double a=contourArea( contours[clr][cnt],false);  
+         if(a>largestArea[clr])
+         {
+           largestArea[clr]=a;
+           largestContourIndex[clr]=cnt;
+         }
+      }
+    }
+
+    vector<vector<Point>> hull[6];
+    for (int clr=0;clr<6;clr++)
+    {
+      if(largestContourIndex[clr]!=-1)
+      {
+        vector<Point2f> hullPoints;
+        convexHull(contours[largestContourIndex[clr]], hull[clr], false );
+        approxPolyDP(hull[clr], hullPoints, POLYDP, true);
+        cout<<hullPoints.size()<<endl;
+      }
+    }
     waitKey(33);
   }
 
@@ -157,7 +178,7 @@ void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg)
 {
   currAngleLock.lock();
  // cout<<"rotZ is"<< msg->rotZ <<endl;
-    currAngle=msg->rotZ;
+  currAngle=msg->rotZ;
   currAngleLock.unlock();
 
 }
