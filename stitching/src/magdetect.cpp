@@ -17,11 +17,12 @@
 #define DIVISION 3
 #define NUMIMAGES 36
 #define dilation_size 2
-
+#define cannythresh 100
 using namespace cv;
 using namespace std;
 
 int distx,disty;
+
 
 std::mutex completeLock,currAngleLock;
 static const std::string OPENCV_WINDOW = "Image window";
@@ -33,7 +34,20 @@ int complete=0;
 Mat img_1,img_2,prevframe;
 
 int firstAngle=0;
+RNG rng(12345);
 
+int countEdges(Mat * edgesrc)
+{
+  Mat src_gray= *edgesrc;
+  Mat canny_output;
+  vector<vector<Point>> contours;
+  vector<Vec4i> hierarchy;
+  Canny( src_gray, canny_output, cannythresh, cannythresh*2, 3 );
+  findContours( canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+  vector<vector<Point>> contours_poly( contours.size() );
+
+
+}
 void detectFeatures()
 {
 
@@ -77,7 +91,18 @@ void detectFeatures()
     bitwise_and(dilatedRed,dilatedBlue,boundaryBR);
     imshow("BLUERED",boundaryBR);
 
-    waitKey(0);
+    vector<vector<Point>> contoursGB, contoursGW, contoursBW, contoursRW, contoursRG, contoursBR;
+    vector<Vec4i> hierarchyGB, hierarchyGW, hierarchyBW, hierarchyRW, hierarchyRG, hierarchyBR;
+
+    findContours( boundaryGB, contoursGB, hierarchyGB, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( boundaryGW, contoursGW, hierarchyGW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( boundaryBW, contoursBW, hierarchyBW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( boundaryRW, contoursRW, hierarchyRW, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( boundaryRG, contoursRG, hierarchyRG, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( boundaryBR, contoursBR, hierarchyBR, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+    
+    waitKey(33);
   }
 
 }
