@@ -1,3 +1,6 @@
+//Code to Detect features in a 360 yaw span.
+//Siddharth S Jha
+
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Vector3Stamped.h>
@@ -25,18 +28,13 @@ using namespace std;
 
 int distx,disty;
 
-
 std::mutex completeLock,currAngleLock;
-static const std::string OPENCV_WINDOW = "Image window";
 
 Mat images[NUMIMAGES];
 int currAngle;
 Mat currImage,stitchedImage;
 int complete=0;
 Mat img_1,img_2,prevframe;
-
-int firstAngle=0;
-RNG rng(12345);
 
 int countEdges(Mat * edgesrc)
 {
