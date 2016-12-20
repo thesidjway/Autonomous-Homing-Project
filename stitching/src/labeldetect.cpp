@@ -14,17 +14,24 @@
 #include <mutex>
 
 #define erosion_size 2
+#define DISTTHRES 35
 
 
 using namespace cv;
 using namespace std;
 
+float dist(Point2f a1,Point2f a2)
+{
+  return sqrt(pow(a1.x-a2.x,2)+pow(a2.y-a1.y,2));
+}
+
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 { 
+    Rect myROI(240,0,160,360);
     Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
 
     //Mat boundary[6];//boundaryGB, boundaryRW, boundaryGW, boundaryBW, boundaryRG, boundaryBR;
-    Mat detectionImg;
+    Mat detectionImgFull,detectionImg;
 
     Mat detectionImgHSV,detectionImgGray;//,detectionImgHLS;
 
@@ -44,8 +51,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
     Mat element = getStructuringElement( MORPH_CROSS,Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point(erosion_size, erosion_size ) );
 
-    detectionImg=cv_ptr->image;
+    detectionImgFull=cv_ptr->image;
+    detectionImg=detectionImgFull(myROI);
 
+    cout<<detectionImg.rows<<" "<<detectionImg.cols<<endl;
     cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
     cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
 
@@ -86,48 +95,67 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
      
     // Filter by Circularity
     params.filterByCircularity = false;
+    
     //params.minCircularity = 0.1;
-     
     // Filter by Convexity
     params.filterByConvexity = true;
-    params.minConvexity = 0.50;
-     
+    params.minConvexity = 0.50;    
     // Filter by Inertia
     params.filterByInertia = true;
     params.maxInertiaRatio = 0.8;
-
 
     // Set up detector with params
     SimpleBlobDetector detector(params);
 
     std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
+    std::vector<Point2f> keypointsall;
+
     detector.detect( srcred, keypointsred);
     detector.detect( srcblue, keypointsblue);
     detector.detect( srcgreen, keypointsgreen);
-    detector.detect( srcwhite, keypointswhite);
+    detector.detect( srcdark, keypointswhite);
 
 
- 
-// Draw detected blobs as red circles.
 // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob
     Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
     drawKeypoints( srcred, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
     drawKeypoints( srcblue, keypointsblue, im_with_keypoints_blue, Scalar(255,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
     drawKeypoints( srcgreen, keypointsgreen, im_with_keypoints_green, Scalar(0,255,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( srcwhite, keypointswhite, im_with_keypoints_white, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    drawKeypoints( srcdark, keypointswhite, im_with_keypoints_white, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
  
 // Show blobs
-    imshow("keypointsR", im_with_keypoints_red);
-    imshow("keypointsG", im_with_keypoints_green);
-    imshow("keypointsB", im_with_keypoints_blue);
-    imshow("keypointsW", im_with_keypoints_white);
+    // imshow("keypointsR", im_with_keypoints_red);
+    // imshow("keypointsG", im_with_keypoints_green);
+    // imshow("keypointsB", im_with_keypoints_blue);
+    // imshow("keypointsW", im_with_keypoints_white);
 
+    int k=0,m=0;
 
+    for(k=0;k<keypointsblue.size();k++)
+      keypointsall.push_back(keypointsblue[k].pt);
+    for(k=0;k<keypointsred.size();k++)
+      keypointsall.push_back(keypointsred[k].pt);
+    for(k=0;k<keypointsgreen.size();k++)
+      keypointsall.push_back(keypointsgreen[k].pt);
+    for(k=0;k<keypointswhite.size();k++)
+      keypointsall.push_back(keypointswhite[k].pt);
+
+    for(k=0;k<keypointsall.size();k++)
+    {
+      for(m=k+1;m<keypointsall.size();m++)
+      {
+        if(dist(keypointsall[m],keypointsall[k])<DISTTHRES)
+          cout<<"PAAS"<<endl;
+      }
+    }
+    cout<<"#############"<<endl;
 
     // imshow("BLUE",erodedblue);
     // imshow("RED",erodedred);
     // imshow("GREEN",srcgreen);
     // imshow("WHITE",srcdark);
+
+
 
 
 
