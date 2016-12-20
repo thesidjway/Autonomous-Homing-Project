@@ -146,30 +146,30 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       return;
     }
 
-    currImage=cv_ptr->image;
+    // currImage=cv_ptr->image;
+    imshow("damn",cv_ptr->image);
+    // if(!currImage.empty())
+    // {   
+    //   completeLock.lock();
+    //   if(complete<NUMIMAGES)
+    //   {
+    //   currAngleLock.lock();
+    //   int indexVal=floor((currAngle+180)/360.0*NUMIMAGES);
+    //   if(images[indexVal].empty())
+    //   {
+    //     images[indexVal]=currImage;
+    //     complete++;
+    //   }
+    //   currAngleLock.unlock();
+    //   }
+    //   completeLock.unlock();
+    // }
 
-    if(!currImage.empty())
-    {   
-      completeLock.lock();
-      if(complete<NUMIMAGES)
-      {
-      currAngleLock.lock();
-      int indexVal=floor((currAngle+180)/360.0*NUMIMAGES);
-      if(images[indexVal].empty())
-      {
-        images[indexVal]=currImage;
-        complete++;
-      }
-      currAngleLock.unlock();
-      }
-      completeLock.unlock();
-    }
-
-    if (complete==NUMIMAGES)
-    {
-      complete++;
-      detectFeatures();
-    }
+    // if (complete==NUMIMAGES)
+    // {
+    //   complete++;
+    //   detectFeatures();
+    // }
 }
 
 void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
