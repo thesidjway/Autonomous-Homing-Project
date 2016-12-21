@@ -16,7 +16,7 @@
 #define erosion_size 2
 #define DISTTHRES 35
 
-
+int angles[14]; //RWB,RGB,GWB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,WBG,GWR
 using namespace cv;
 using namespace std;
 
@@ -27,6 +27,7 @@ float dist(Point2f a1,Point2f a2)
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 { 
+
     Rect myROI(240,0,160,360);
     Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
 
@@ -51,10 +52,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
     Mat element = getStructuringElement( MORPH_CROSS,Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point(erosion_size, erosion_size ) );
 
-    detectionImgFull=cv_ptr->image;
-    detectionImg=detectionImgFull(myROI);
+    detectionImg=cv_ptr->image;
+    //detectionImg=detectionImgFull(myROI);
 
-    cout<<detectionImg.rows<<" "<<detectionImg.cols<<endl;
+    //cout<<detectionImg.rows<<" "<<detectionImg.cols<<endl;
     cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
     cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
 
@@ -78,7 +79,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     erode( srcblue, erodedblue, element );
     erode( srcred, erodedred, element );
 
-    imshow("ORIGINAL",detectionImg);
+
 
 
     SimpleBlobDetector::Params params;
@@ -90,7 +91,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     params.minThreshold = 200;
 
     params.filterByArea = true;
-    params.minArea = 20;
+    params.minArea = 10;
     params.minArea = 200;
      
     // Filter by Circularity
@@ -99,7 +100,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     //params.minCircularity = 0.1;
     // Filter by Convexity
     params.filterByConvexity = true;
-    params.minConvexity = 0.50;    
+    params.minConvexity = 0.30;    
     // Filter by Inertia
     params.filterByInertia = true;
     params.maxInertiaRatio = 0.8;
@@ -108,46 +109,60 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     SimpleBlobDetector detector(params);
 
     std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
-    std::vector<Point2f> keypointsall;
+    std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR;
 
     detector.detect( srcred, keypointsred);
     detector.detect( srcblue, keypointsblue);
     detector.detect( srcgreen, keypointsgreen);
-    detector.detect( srcdark, keypointswhite);
-
+  //  detector.detect( srcdark, keypointswhite);
 
 // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob
     Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
-    drawKeypoints( srcred, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( srcblue, keypointsblue, im_with_keypoints_blue, Scalar(255,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( srcgreen, keypointsgreen, im_with_keypoints_green, Scalar(0,255,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( srcdark, keypointswhite, im_with_keypoints_white, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    
+    drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    // drawKeypoints( detectionImg, keypointswhite, im_with_keypoints_white, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+
+    // drawKeypoints( srcred, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    // drawKeypoints( srcblue, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    // drawKeypoints( srcgreen, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    //drawKeypoints( detectionImg, keypointswhite, im_with_keypoints_white, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
  
+  //  imshow("ORIGINAL",detectionImg);
 // Show blobs
-    // imshow("keypointsR", im_with_keypoints_red);
-    // imshow("keypointsG", im_with_keypoints_green);
-    // imshow("keypointsB", im_with_keypoints_blue);
-    // imshow("keypointsW", im_with_keypoints_white);
+    imshow("keypointsR", im_with_keypoints_red);
+    imshow("keypointsG", im_with_keypoints_green);
+    imshow("keypointsB", im_with_keypoints_blue);
+  //  imshow("keypointsW", im_with_keypoints_white);
 
     int k=0,m=0;
 
     for(k=0;k<keypointsblue.size();k++)
-      keypointsall.push_back(keypointsblue[k].pt);
-    for(k=0;k<keypointsred.size();k++)
-      keypointsall.push_back(keypointsred[k].pt);
-    for(k=0;k<keypointsgreen.size();k++)
-      keypointsall.push_back(keypointsgreen[k].pt);
-    for(k=0;k<keypointswhite.size();k++)
-      keypointsall.push_back(keypointswhite[k].pt);
-
-    for(k=0;k<keypointsall.size();k++)
     {
-      for(m=k+1;m<keypointsall.size();m++)
-      {
-        if(dist(keypointsall[m],keypointsall[k])<DISTTHRES)
-          cout<<"PAAS"<<endl;
-      }
+      keypointsBG.push_back(keypointsblue[k].pt);
+      keypointsRB.push_back(keypointsblue[k].pt);
     }
+
+    for(k=0;k<keypointsred.size();k++)
+    {
+      keypointsRG.push_back(keypointsred[k].pt);
+      keypointsRB.push_back(keypointsred[k].pt);
+    }
+    for(k=0;k<keypointsgreen.size();k++)
+    {
+      keypointsRG.push_back(keypointsgreen[k].pt);
+      keypointsBG.push_back(keypointsgreen[k].pt);
+    }
+
+    // for(k=0;k<keypointsRG.size();k++)
+    // {
+    //   for(m=k+1;m<keypointsall.size();m++)
+    //   {
+    //     if(dist(keypointsall[m],keypointsall[k])<DISTTHRES)
+    //       cout<<"PAAS"<<endl;
+    //   }
+    // }
     cout<<"#############"<<endl;
 
     // imshow("BLUE",erodedblue);
