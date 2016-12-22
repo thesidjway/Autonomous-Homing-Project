@@ -26,14 +26,25 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package( OpenCV REQUIRED)
 
+add_message_files(
+  	FILES
+	LabelAngles.msg
+ )
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 
 
 ## Declare a catkin package
 catkin_package(
 	INCLUDE_DIRS include
-	CATKIN_DEPENDS roscpp rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge ardrone_autonomy
+	CATKIN_DEPENDS message_runtime roscpp rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge ardrone_autonomy
 	)
 	
+
 
 
 include_directories(
@@ -47,18 +58,6 @@ include_directories(
 
 
 
-
-#add_executable(stitcher_node src/stitch.cpp)
-#target_link_libraries(stitcher_node ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
-#add_dependencies(stitcher_node roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
-
-#add_executable(magstitch src/magstitch.cpp)
-#target_link_libraries(magstitch ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
-#add_dependencies(magstitch roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
-
-#add_executable(magdetect src/magdetect.cpp)
-#target_link_libraries(magdetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
-#add_dependencies(magdetect roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
 add_executable(labeldetect src/labeldetect.cpp)
 target_link_libraries(labeldetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
