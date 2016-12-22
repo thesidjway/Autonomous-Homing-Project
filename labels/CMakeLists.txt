@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 2.8.3)
 
-project(stitcher)
+project(labels)
 
 ADD_DEFINITIONS(-std=c++0x )
 
