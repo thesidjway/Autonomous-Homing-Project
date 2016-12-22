@@ -31,7 +31,7 @@ float dist(Point2f a1,Point2f a2)
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 { 
 
-    Rect myROI(240,0,160,360);
+    Rect myROI(260,0,120,360);
     Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
 
     //Mat boundary[6];//boundaryGB, boundaryRW, boundaryGW, boundaryBW, boundaryRG, boundaryBR;
@@ -161,18 +161,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
       keypointsall.push_back(keypointsgreen[k].pt);
     }
 
-
-
-
-
     cout<<"#############"<<endl;
-
-
-
-
-
-
-
 
     cv::waitKey(30);
 }

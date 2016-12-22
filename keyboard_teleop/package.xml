@@ -1,0 +1,17 @@
+<package>
+	<name>teleop_homing</name>
+	<version>1.0.0</version>
+	<description>
+		Teleop node for the visual homing project
+	</description>
+	<maintainer email="siddharthjha@outlook.com">Siddharth Jha</maintainer>
+	
+	<buildtool_depend>catkin</buildtool_depend>
+	
+	<run_depend>ardrone_autonomy</run_depend>
+	
+	<license>BSD</license>
+	<url>http://www.sidj.in/</url>
+</package>
+
+

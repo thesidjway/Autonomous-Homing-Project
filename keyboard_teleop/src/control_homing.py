@@ -4,7 +4,7 @@
 # https://github.com/mikehamer/ardrone_tutorials
 
 # This controller extends the base DroneVideoDisplay class, adding a keypress handler to enable keyboard control of the drone
-
+  
 # Import the ROS libraries, and load the manifest file which through <depend package=... /> will give us access to the project dependencies
 import roslib; roslib.load_manifest('ardrone_tutorials')
 import rospy
@@ -20,7 +20,10 @@ from PySide import QtCore, QtGui
 
 x_vel=0.0
 y_vel=0.0
+
+bool_homing=0
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
+
 class KeyMapping(object):
 	IncreaseAltitude = QtCore.Qt.Key.Key_Q
 	DecreaseAltitude = QtCore.Qt.Key.Key_A
@@ -46,9 +49,6 @@ class KeyboardController(DroneVideoDisplay):
 # We add a keyboard handler to the DroneVideoDisplay to react to keypresses
 	def keyPressEvent(self, event):
 		key = event.key()
-
-
-
 		# If we have constructed the drone controller and the key is not generated from an auto-repeating key
 		if controller is not None and not event.isAutoRepeat():
 			# Handle the important cases first!
@@ -67,9 +67,6 @@ class KeyboardController(DroneVideoDisplay):
 					self.z_velocity += -1
 
 
-			# finally we set the command to be sent. The controller handles sending this at regular intervals
-			#controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
-
 
 	def keyReleaseEvent(self,event):
 		key = event.key()
@@ -79,12 +76,12 @@ class KeyboardController(DroneVideoDisplay):
 			# Note that we don't handle the release of emergency/takeoff/landing keys here, there is no need.
 			# Now we handle moving, notice that this section is the opposite (-=) of the keypress section
 
-			if bool_homing == false:
+			if bool_homing == 0:
 				if key == KeyMapping.StartHoming:
-					bool_homing=true
-			if bool_homing == true:
+					bool_homing=1
+			if bool_homing == 1:
 				if key == KeyMapping.StopHoming:
-					bool_homing=false
+					bool_homing=0
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
@@ -92,18 +89,15 @@ class KeyboardController(DroneVideoDisplay):
 				self.z_velocity -= -1
 
 			
-
-			# finally we set the command to be sent. The controller handles sending this at regular intervals
 			
 
 	def velCallback(self, msg):
-        x_vel=msg.linear.x
-        y_vel=msg.linear.y
-
-        if bool_homing==true:
+		x_vel=msg.linear.x
+		y_vel=msg.linear.y
+		if bool_homing==1:
 			self.roll=x_vel
 			self.pitch=y_vel
-		else
+		else:
 			self.roll=0
 			self.pitch=0
 		controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
@@ -114,7 +108,7 @@ class KeyboardController(DroneVideoDisplay):
 if __name__=='__main__':
 	import sys
 	# Firstly we setup a ros node, so that we can communicate with the other packages
-	rospy.init_node('ardrone_keyboard_controller')
+	rospy.init_node('homing_controller')
 
 	# Now we construct our Qt Application and associated controllers and windows
 	app = QtGui.QApplication(sys.argv)
@@ -122,8 +116,6 @@ if __name__=='__main__':
 	display = KeyboardController()
 
 	display.show()
-
-	rospy.Subscriber("vels", Twist, velCallback)
 
 	# executes the QT application
 	status = app.exec_()

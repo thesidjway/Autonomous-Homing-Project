@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "homing_node");
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
-    ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 30);
+    ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
     ros::Rate loop_rate(50);
     while(ros::ok())
     {
