@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>homing_planner</name>
+  <name>stitcher</name>
   <version>0.0.0</version>
   <description>For stitching images</description>
 
@@ -19,6 +19,8 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>cv_bridge</build_depend>
   <build_depend>ardrone_autonomy</build_depend>
  
   <run_depend>roscpp</run_depend>
@@ -27,6 +29,8 @@
   <run_depend>std_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>geometry_msgs</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>cv_bridge</run_depend>
   <run_depend>ardrone_autonomy</run_depend>
   <export>
 

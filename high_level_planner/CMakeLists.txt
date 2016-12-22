@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 2.8.3)
 
-project(high_level_planner)
+project(homing_planner)
 
 ADD_DEFINITIONS(-std=c++0x )
 
@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
 	rospy 
 	std_msgs 
 	sensor_msgs
-	geometry_msgs
 	genmsg 
 	message_generation 
 	ardrone_autonomy
@@ -25,11 +24,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 
 
-
 ## Declare a catkin package
 catkin_package(
 	INCLUDE_DIRS include
-	CATKIN_DEPENDS roscpp rospy geometry_msgs std_msgs geometry_msgs sensor_msgs ardrone_autonomy
+	CATKIN_DEPENDS roscpp rospy geometry_msgs std_msgs sensor_msgs ardrone_autonomy
 	)
 	
 
@@ -48,7 +46,7 @@ include_directories(
 
 add_executable(planner src/planner.cpp)
 target_link_libraries(planner ${catkin_LIBRARIES})
-add_dependencies(planner roscpp rospy geometry_msgs std_msgs geometry_msgs sensor_msgs ardrone_autonomy)
+add_dependencies(planner roscpp rospy sensor_msgs std_msgs geometry_msgs ardrone_autonomy)
 
 
 

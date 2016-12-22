@@ -9,12 +9,13 @@
 
 using namespace std;
 
+std::mutex vel_lock;
+
+geometry_msgs::Twist vel_msg;
 float newTan(float a,float b)
 {
 	return atan2(a,b)+(atan2(a,b)>0)*2*PI;
 }
-
-float Tsamp = 0.1;
 
 float theta_1,theta_2,theta_3,theta_1s,theta_2s,theta_3s,beta_32,beta_21,beta_13,beta_13s,beta_32s,beta_21s;
 
@@ -76,16 +77,38 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
             }
         }
 	}
+    float vel[2]={0,0};
+
+    for(int i=0;i<3;i++)
+    {
+        vel[0]+=0.1*MULT[i][0];
+        vel[1]+=0.1*MULT[i][1];
+    }
+    
+    vel_lock.lock();
+    vel_msg.linear.x=vel[0];
+    vel_msg.linear.y=vel[1];
+    vel_lock.unlock();
+
     
 }
 
 int main(int argc, char **argv)
-{
-	ros::init(argc, argv, "high_level_planner");
-
-  	ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("thetaAngles", 10, angleCallback);
-    ros::spin();
+{   
+    ros::init(argc, argv, "homing_node");
+    ros::NodeHandle n;
+    ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
+    ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 30);
+    ros::Rate loop_rate(50);
+    while(ros::ok())
+    {
+        vel_lock.lock();
+        cout<< vel_msg.linear.x<<" "<< vel_msg.linear.y<<endl;
+        vel_pub.publish(vel_msg);
+        vel_lock.unlock();
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
 
 }
 
