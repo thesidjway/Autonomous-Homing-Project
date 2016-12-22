@@ -12,6 +12,7 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include "ardrone_autonomy/Navdata.h"
 #include <mutex>
+#include <algorithm>
 
 #define erosion_size 2
 #define DISTTHRES 35
@@ -19,6 +20,8 @@
 int angles[14]; //RWB,RGB,GWB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,WBG,GWR
 using namespace cv;
 using namespace std;
+
+
 
 float dist(Point2f a1,Point2f a2)
 {
@@ -52,8 +55,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
     Mat element = getStructuringElement( MORPH_CROSS,Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point(erosion_size, erosion_size ) );
 
-    detectionImg=cv_ptr->image;
-    //detectionImg=detectionImgFull(myROI);
+    detectionImgFull=cv_ptr->image;
+    detectionImg=detectionImgFull(myROI);
 
     //cout<<detectionImg.rows<<" "<<detectionImg.cols<<endl;
     cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
@@ -109,7 +112,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     SimpleBlobDetector detector(params);
 
     std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
-    std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR;
+    std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR, keypointsall;
 
     detector.detect( srcred, keypointsred);
     detector.detect( srcblue, keypointsblue);
@@ -142,33 +145,29 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
     {
       keypointsBG.push_back(keypointsblue[k].pt);
       keypointsRB.push_back(keypointsblue[k].pt);
+      keypointsall.push_back(keypointsblue[k].pt);
     }
 
     for(k=0;k<keypointsred.size();k++)
     {
       keypointsRG.push_back(keypointsred[k].pt);
       keypointsRB.push_back(keypointsred[k].pt);
+      keypointsall.push_back(keypointsred[k].pt);
     }
     for(k=0;k<keypointsgreen.size();k++)
     {
       keypointsRG.push_back(keypointsgreen[k].pt);
       keypointsBG.push_back(keypointsgreen[k].pt);
+      keypointsall.push_back(keypointsgreen[k].pt);
     }
 
-    // for(k=0;k<keypointsRG.size();k++)
-    // {
-    //   for(m=k+1;m<keypointsall.size();m++)
-    //   {
-    //     if(dist(keypointsall[m],keypointsall[k])<DISTTHRES)
-    //       cout<<"PAAS"<<endl;
-    //   }
-    // }
+
+
+
+
     cout<<"#############"<<endl;
 
-    // imshow("BLUE",erodedblue);
-    // imshow("RED",erodedred);
-    // imshow("GREEN",srcgreen);
-    // imshow("WHITE",srcdark);
+
 
 
 
