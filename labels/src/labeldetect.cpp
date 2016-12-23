@@ -1,6 +1,8 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Int32.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/Twist.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -15,12 +17,19 @@
 #include <algorithm>
 #include <labels/LabelAngles.h>
 
+#define IDLE 0
+#define READING 1
+#define HOMING 2
+
 float angles[14]; //RWB,RGB,GWB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,WBG,GWR
 using namespace cv;
 using namespace std;
 float currAngle;
 mutex currAngleLock, angleArrayLock;
 int returned[5]={-1,-1,-1,-1,-1};
+int currStatus=IDLE;
+
+
 
 labels::LabelAngles angleMessage;
 
@@ -54,12 +63,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 {
                     if(KB[j].pt.y < KR[i].pt.y)
                     {
-                        cout<<"BGR"<<endl;
+                        //cout<<"BGR"<<endl;
                         return 5;
                     }
                     else if(KB[j].pt.y > KR[i].pt.y)
                     {
-                        cout<<"RGB"<<endl;
+                        //cout<<"RGB"<<endl;
                         return 1;
                     }
                 }
@@ -67,7 +76,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 {
                     if(KB[j].pt.y < KG[k].pt.y)
                     {
-                        cout<<"BRG"<<endl;
+                        //cout<<"BRG"<<endl;
                         return 3;
                     }
                 }
@@ -75,7 +84,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 {
                     if(KR[i].pt.y > KG[k].pt.y)
                     {
-                        cout<<"GBR"<<endl;
+                       // cout<<"GBR"<<endl;
                         return 8;
                     }
                 }
@@ -85,12 +94,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             {
                 if(KB[j].pt.y < KR[i].pt.y)
                 {
-                    cout<<"WBR"<<endl;
+                    //cout<<"WBR"<<endl;
                     return 6;
                 }
                 else
                 {
-                    cout<<"WRB"<<endl;
+                    //cout<<"WRB"<<endl;
                     return 4;
                 }
             }
@@ -98,12 +107,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             { 
                 if(KB[j].pt.y < KR[i].pt.y)
                 {
-                    cout<<"BWR"<<endl;
+                    //cout<<"BWR"<<endl;
                     return 9;
                 }
                 else
                 {
-                    cout<<"RWB"<<endl;
+                    //cout<<"RWB"<<endl;
                     return 0;
                 }
             }
@@ -114,12 +123,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             {
                 if(KR[i].pt.y < KG[k].pt.y)
                 {
-                    cout<<"WRG"<<endl;
+                    //cout<<"WRG"<<endl;
                     return 7;
                 }
                 else
                 {
-                    cout<<"WGR"<<endl;
+                    //cout<<"WGR"<<endl;
                     return 10;
                 }
             }
@@ -127,7 +136,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             { 
                 if(KR[i].pt.y > KG[i].pt.y)
                 {
-                    cout<<"GWR"<<endl;
+                    //cout<<"GWR"<<endl;
                     return 13;
                 }
             }        
@@ -141,12 +150,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             {
                 if(KB[j].pt.y < KG[k].pt.y)
                 {
-                    cout<<"WBG"<<endl;
+                    //cout<<"WBG"<<endl;
                     return 12;
                 }
                 else
                 {
-                    cout<<"WGB"<<endl;
+                    //cout<<"WGB"<<endl;
                     return 11;
                 }
             }
@@ -154,7 +163,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             { 
                 if(KB[j].pt.y > KG[k].pt.y)
                 {
-                    cout<<"GWB"<<endl;
+                    //cout<<"GWB"<<endl;
                     return 2;
                 }
             }               
@@ -162,6 +171,11 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
 
     }
 return -1;
+}
+
+void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
+{
+    currStatus=msg->data;
 }
 
 void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
@@ -173,106 +187,127 @@ void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg)
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 { 
-    Rect myROI(260,0,120,360);
-    Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
-    Mat detectionImgFull,detectionImg;
-    Mat detectionImgHSV,detectionImgGray;
-
-    cv_bridge::CvImagePtr cv_ptr;
-
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-
-    detectionImgFull=cv_ptr->image;
-    detectionImg=detectionImgFull(myROI);
-
-    cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
-    cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
-
-    inRange(detectionImgHSV,Scalar(0,40,40),Scalar(4,255,255),srcred1);
-    inRange(detectionImgHSV,Scalar(170,40,40),Scalar(180,255,255),srcred2);
-    bitwise_or(srcred1,srcred2,srcred);
-
-    inRange(detectionImgHSV,Scalar(55,40,20),Scalar(82,255,255),srcgreen);
-    inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),srcblue);
-
-    inRange(detectionImgGray,0,99,srcdark);
-    inRange(detectionImgGray,100,255,srcwhite);
-
-    bitwise_and(srcdark,srcblue,srcblue);
-    bitwise_and(srcdark,srcgreen,srcgreen);
-
-
-
-    SimpleBlobDetector::Params params;
-
-    params.filterByColor = true;
-    params.blobColor = 255;
-    params.minThreshold = 200;
-    params.filterByArea = true;
-    params.minArea = 50;
-    params.filterByCircularity = false;
-    params.filterByConvexity = true;
-    params.minConvexity = 0.30;    
-    params.filterByInertia = true;
-    params.maxInertiaRatio = 0.8;
-
-    SimpleBlobDetector detector(params);
-
-    std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
-    std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR, keypointsall;
-
-    detector.detect( srcred, keypointsred);
-    detector.detect( srcblue, keypointsblue);
-    detector.detect( srcgreen, keypointsgreen);
-
-    Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
-
-    
-    drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-
-    imshow("keypointsR", im_with_keypoints_red);
-    imshow("keypointsG", im_with_keypoints_green);
-    imshow("keypointsB", im_with_keypoints_blue);
-
-    // imshow("Original",detectionImg);
-
-
-    int a=detectPoster(keypointsred,keypointsgreen,keypointsblue);
-    returned[4]=returned[3];
-    returned[3]=returned[2];
-    returned[2]=returned[1];
-    returned[1]=returned[0];
-    returned[0]=a;
-    if(returned[4]==returned[3] && returned[3]==returned[2] && returned[2]==returned[1] && returned[1]==returned[0] && returned[1]!=-1)
-    {
-
-        angleArrayLock.lock();
-        if(fabs(angles[returned[2]])<0.01)
+        if(currStatus==IDLE)
         {
-            angles[returned[2]]=currAngle;
-            cout<<angles[returned[2]]<<endl;
+            return;
         }
-        angleArrayLock.unlock();
+        Rect myROI(260,0,120,360);
+        Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
+        Mat detectionImgFull,detectionImg;
+        Mat detectionImgHSV,detectionImgGray;
 
-    }
-    
+        cv_bridge::CvImagePtr cv_ptr;
 
-    cv::waitKey(20);
+        try
+        {
+          cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+        }
+        catch (cv_bridge::Exception& e)
+        {
+          ROS_ERROR("cv_bridge exception: %s", e.what());
+          return;
+        }
 
-    
+        detectionImgFull=cv_ptr->image;
+        if(currStatus==READING)
+        {
+            detectionImg=detectionImgFull(myROI);
+        }
+        else if(currStatus==HOMING)
+        {
+            detectionImg=detectionImgFull;
+        }
+
+        cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
+        cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
+
+        inRange(detectionImgHSV,Scalar(0,40,40),Scalar(4,255,255),srcred1);
+        inRange(detectionImgHSV,Scalar(170,40,40),Scalar(180,255,255),srcred2);
+        bitwise_or(srcred1,srcred2,srcred);
+
+        inRange(detectionImgHSV,Scalar(55,40,20),Scalar(82,255,255),srcgreen);
+        inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),srcblue);
+
+        inRange(detectionImgGray,0,99,srcdark);
+        inRange(detectionImgGray,100,255,srcwhite);
+
+        bitwise_and(srcdark,srcblue,srcblue);
+        bitwise_and(srcdark,srcgreen,srcgreen);
+
+
+
+        SimpleBlobDetector::Params params;
+
+        params.filterByColor = true;
+        params.blobColor = 255;
+        params.minThreshold = 200;
+        params.filterByArea = true;
+        params.minArea = 50;
+        params.filterByCircularity = false;
+        params.filterByConvexity = true;
+        params.minConvexity = 0.30;    
+        params.filterByInertia = true;
+        params.maxInertiaRatio = 0.8;
+
+        SimpleBlobDetector detector(params);
+
+        std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
+        std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR;
+        std::vector<float> keypointsall;
+
+        detector.detect( srcred, keypointsred);
+        detector.detect( srcblue, keypointsblue);
+        detector.detect( srcgreen, keypointsgreen);
+
+        Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
+
+        
+        drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+        drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+        drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+
+
+        imshow("keypointsR", im_with_keypoints_red);
+        imshow("keypointsG", im_with_keypoints_green);
+        imshow("keypointsB", im_with_keypoints_blue);
+
+        // imshow("Original",detectionImg);
+
+        if(currStatus==READING)
+        {
+            int a=detectPoster(keypointsred,keypointsgreen,keypointsblue);
+            returned[4]=returned[3];
+            returned[3]=returned[2];
+            returned[2]=returned[1];
+            returned[1]=returned[0];
+            returned[0]=a;
+            if(returned[4]==returned[3] && returned[3]==returned[2] && returned[2]==returned[1] && returned[1]==returned[0] && returned[1]!=-1)
+            {
+
+                angleArrayLock.lock();
+                if(fabs(angles[returned[2]])<0.01)
+                {
+                    angles[returned[2]]=currAngle;
+                    cout<<angles[returned[2]]<<endl;
+                }
+                angleArrayLock.unlock();
+
+            }
+        }
+        else if(currStatus==HOMING)
+        {
+            for(int l=0;l<keypointsred.size();l++)
+                keypointsall.push_back(keypointsred[l].pt.x);
+            for(int l=0;l<keypointsgreen.size();l++)
+                keypointsall.push_back(keypointsgreen[l].pt.x);
+            for(int l=0;l<keypointsblue.size();l++)
+                keypointsall.push_back(keypointsblue[l].pt.x);
+
+        }
+        cv::waitKey(20);
 
 }
+
 
 
 
@@ -282,9 +317,11 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "stitch_node");
 
   ros::NodeHandle nh;
+  ros::Subscriber statusSub = nh.subscribe <std_msgs::Int32>("homingStatus", 100, statusCallBack); 
   image_transport::ImageTransport it(nh);
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback);
   ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
+  ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100);
   ros::Publisher anglePub = nh.advertise <labels::LabelAngles>("labelAngles",100);
   ros::Rate loop_rate(50);
 

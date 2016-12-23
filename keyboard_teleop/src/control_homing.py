@@ -14,6 +14,7 @@ from drone_controller import BasicDroneController
 from drone_video_display import DroneVideoDisplay
 
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Int32
 
 # Finally the GUI libraries
 from PySide import QtCore, QtGui
@@ -22,7 +23,9 @@ x_vel=0.0
 y_vel=0.0
 
 bool_homing=0
+bool_reading=0
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
+statuspub = rospy.Publisher('homingStatus',Int32,queue_size=10)
 
 class KeyMapping(object):
 	IncreaseAltitude = QtCore.Qt.Key.Key_Q
@@ -82,6 +85,9 @@ class KeyboardController(DroneVideoDisplay):
 			if bool_homing == 1:
 				if key == KeyMapping.StopHoming:
 					bool_homing=0
+			if bool_homing == 0:
+				if key == KeyMapping.StartReading:
+					bool_reading=1
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
@@ -100,6 +106,16 @@ class KeyboardController(DroneVideoDisplay):
 		else:
 			self.roll=0
 			self.pitch=0
+
+
+		if bool_reading==0:
+			if bool_homing==0:
+				statuspub.publish(0)
+			elif bool_homing==1:
+				statuspub.publish(2)
+		elif bool_reading==1:
+			statuspub.publish(1)
+
 		controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
 
 
