@@ -20,6 +20,7 @@ using namespace cv;
 using namespace std;
 float currAngle;
 mutex currAngleLock, angleArrayLock;
+int returned[5]={-1,-1,-1,-1,-1};
 
 labels::LabelAngles angleMessage;
 
@@ -40,47 +41,138 @@ int isnonzero(float* array, int arraysize)
     return 1;
 }
 
-void detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KB, std::vector<KeyPoint> KG)
+int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector<KeyPoint> KB)
 {
-    if(KR.size()>0)
+    for(int i=0;i<KR.size();i++)
     {
-        if(KB.size()>0)
+        for(int j=0;j<KB.size();j++)
         {
-            if(KG.size()>0) //RGB
+            
+            for(int k=0;k<KG.size();k++)
             {
-                
-                cout<<"BGR"<<endl;
-
+                if(dist(KG[k].pt,KB[j].pt)<1.5*KG[k].size && dist(KG[k].pt,KR[i].pt)<1.5*KG[k].size)
+                {
+                    if(KB[j].pt.y < KR[i].pt.y)
+                    {
+                        cout<<"BGR"<<endl;
+                        return 5;
+                    }
+                    else if(KB[j].pt.y > KR[i].pt.y)
+                    {
+                        cout<<"RGB"<<endl;
+                        return 1;
+                    }
+                }
+                else if(dist(KR[i].pt,KB[j].pt)<1.5*KR[i].size && dist(KG[k].pt,KR[i].pt)<1.5*KR[i].size)
+                {
+                    if(KB[j].pt.y < KG[k].pt.y)
+                    {
+                        cout<<"BRG"<<endl;
+                        return 3;
+                    }
+                }
+                else if (dist(KR[i].pt,KB[j].pt)<1.5*KB[j].size && dist(KG[k].pt,KB[j].pt)<1.5*KB[j].size)
+                {
+                    if(KR[i].pt.y > KG[k].pt.y)
+                    {
+                        cout<<"GBR"<<endl;
+                        return 8;
+                    }
+                }
             }
-            else //RB
+            //cout<<dist(KR[i].pt,KB[j].pt)<<" "<<KR[i].size<<endl;
+            if(dist(KR[i].pt,KB[j].pt)<2*KR[i].size)
             {
-                cout<<"BR"<<endl;
-
+                if(KB[j].pt.y < KR[i].pt.y)
+                {
+                    cout<<"WBR"<<endl;
+                    return 6;
+                }
+                else
+                {
+                    cout<<"WRB"<<endl;
+                    return 4;
+                }
+            }
+            else if (dist(KR[i].pt,KB[j].pt)<4*KR[i].size)
+            { 
+                if(KB[j].pt.y < KR[i].pt.y)
+                {
+                    cout<<"BWR"<<endl;
+                    return 9;
+                }
+                else
+                {
+                    cout<<"RWB"<<endl;
+                    return 0;
+                }
             }
         }
-        else if(KG.size()>0) //RG
+        for(int k=0;k<KG.size();k++)
         {
-            cout<<"GR"<<endl;
+            if(dist(KG[k].pt,KR[i].pt)<2*KG[k].size)
+            {
+                if(KR[i].pt.y < KG[k].pt.y)
+                {
+                    cout<<"WRG"<<endl;
+                    return 7;
+                }
+                else
+                {
+                    cout<<"WGR"<<endl;
+                    return 10;
+                }
+            }
+            else if (dist(KG[k].pt,KR[i].pt)<4*KG[k].size)
+            { 
+                if(KR[i].pt.y > KG[i].pt.y)
+                {
+                    cout<<"GWR"<<endl;
+                    return 13;
+                }
+            }        
+        }
+    }
+    for(int j=0;j<KB.size();j++)
+    {
+        for(int k=0;k<KG.size();k++)
+        {
+            if(dist(KG[k].pt,KB[j].pt)<1.5*KG[k].size)
+            {
+                if(KB[j].pt.y < KG[k].pt.y)
+                {
+                    cout<<"WBG"<<endl;
+                    return 12;
+                }
+                else
+                {
+                    cout<<"WGB"<<endl;
+                    return 11;
+                }
+            }
+            else if (dist(KG[k].pt,KB[j].pt)<4*KG[k].size)
+            { 
+                if(KB[j].pt.y > KG[k].pt.y)
+                {
+                    cout<<"GWB"<<endl;
+                    return 2;
+                }
+            }               
+        }
 
-        }
-        //cout<<"JUST RED."<<endl;
     }
-    else if(KB.size()>0) //BG
-    {
-        if(KG.size()>0)
-        {
-            cout<<"BG"<<endl;
-        }
-        //cout<<"JUST BLUE."<<endl;
-    }
-    else
-    {
-        //cout<<"JUST GREEN OR NOTHING."<<endl;
-    }
+return -1;
 }
+
+void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
+{
+  currAngleLock.lock();
+  currAngle=msg->rotZ;
+  currAngleLock.unlock();
+}
+
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 { 
-
     Rect myROI(260,0,120,360);
     Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
     Mat detectionImgFull,detectionImg;
@@ -143,24 +235,38 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
     Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
 
-    Mat blankImg(360,120,CV_8UC3,Scalar(255,255,255));
     
-    // drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    // drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    // drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-    drawKeypoints( blankImg, keypointsred, blankImg, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( blankImg, keypointsblue, blankImg, Scalar(255,0,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-    drawKeypoints( blankImg, keypointsgreen, blankImg, Scalar(0,255,0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-    // imshow("keypointsR", im_with_keypoints_red);
-    // imshow("keypointsG", im_with_keypoints_green);
-    // imshow("keypointsB", im_with_keypoints_blue);
-    imshow("Colour",blankImg);
-    imshow("Original",detectionImg);
+    drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
 
-    detectPoster(keypointsred,keypointsgreen,keypointsblue);
+    imshow("keypointsR", im_with_keypoints_red);
+    imshow("keypointsG", im_with_keypoints_green);
+    imshow("keypointsB", im_with_keypoints_blue);
+
+    // imshow("Original",detectionImg);
+
+
+    int a=detectPoster(keypointsred,keypointsgreen,keypointsblue);
+    returned[4]=returned[3];
+    returned[3]=returned[2];
+    returned[2]=returned[1];
+    returned[1]=returned[0];
+    returned[0]=a;
+    if(returned[4]==returned[3] && returned[3]==returned[2] && returned[2]==returned[1] && returned[1]==returned[0] && returned[1]!=-1)
+    {
+
+        angleArrayLock.lock();
+        if(fabs(angles[returned[2]])<0.01)
+        {
+            angles[returned[2]]=currAngle;
+            cout<<angles[returned[2]]<<endl;
+        }
+        angleArrayLock.unlock();
+
+    }
+    
 
     cv::waitKey(20);
 
@@ -168,12 +274,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
 }
 
-void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
-{
-  currAngleLock.lock();
-  currAngle=msg->rotZ;
-  currAngleLock.unlock();
-}
+
 
 int main(int argc, char **argv)
 {
@@ -209,7 +310,7 @@ int main(int argc, char **argv)
         anglePub.publish(angleMessage);
     }
     angleArrayLock.unlock();
-    ros::spin();
+    ros::spinOnce();
   }
   return 0;
 }
