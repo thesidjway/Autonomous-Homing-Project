@@ -5,6 +5,7 @@
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <math.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
@@ -21,6 +22,8 @@
 #define READING 1
 #define HOMING 2
 
+#define PI 3.14159
+
 float angles[14]; //RWB,RGB,GWB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,WBG,GWR
 using namespace cv;
 using namespace std;
@@ -30,7 +33,7 @@ int returned[5]={-1,-1,-1,-1,-1};
 int currStatus=IDLE;
 
 
-
+geometry_msgs::Twist thetasMessage;
 labels::LabelAngles angleMessage;
 
 float dist(Point2f a1,Point2f a2)
@@ -173,6 +176,8 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
 return -1;
 }
 
+bool myfunction (int i,int j) { return (i<j); }
+
 void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
 {
     currStatus=msg->data;
@@ -251,8 +256,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         SimpleBlobDetector detector(params);
 
-        std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen,keypointswhite;
-        std::vector<Point2f> keypointsRB, keypointsRG, keypointsBG, keypointsBGR;
+        std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen;
         std::vector<float> keypointsall;
 
         detector.detect( srcred, keypointsred);
@@ -303,6 +307,105 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             for(int l=0;l<keypointsblue.size();l++)
                 keypointsall.push_back(keypointsblue[l].pt.x);
 
+
+        int i=40;
+        float temp=-1;
+        int count=0;
+        int marker[3];
+        float xValues[3];
+        while(i<480)
+        {
+            int k=i+120;
+            int num=0;
+            for (int j=0;j<keypointsall.size();j++)
+            {
+                if(keypointsall[j]<k && keypointsall[j]>i)
+                {
+                    num++;
+                    temp=keypointsall[j];
+                }
+
+            }
+            if (num>=2)
+            {
+                xValues[count]=temp;
+                Rect newROI(i,0,120,360);
+                detectionImg=detectionImgFull(newROI);
+                cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
+                cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
+
+                inRange(detectionImgHSV,Scalar(0,40,40),Scalar(4,255,255),srcred1);
+                inRange(detectionImgHSV,Scalar(170,40,40),Scalar(180,255,255),srcred2);
+                bitwise_or(srcred1,srcred2,srcred);
+
+                inRange(detectionImgHSV,Scalar(55,40,20),Scalar(82,255,255),srcgreen);
+                inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),srcblue);
+
+                inRange(detectionImgGray,0,99,srcdark);
+                inRange(detectionImgGray,100,255,srcwhite);
+
+                bitwise_and(srcdark,srcblue,srcblue);
+                bitwise_and(srcdark,srcgreen,srcgreen);
+
+
+
+                SimpleBlobDetector::Params Hparams;
+
+                Hparams.filterByColor = true;
+                Hparams.blobColor = 255;
+                Hparams.minThreshold = 200;
+                Hparams.filterByArea = true;
+                Hparams.minArea = 50;
+                Hparams.filterByCircularity = false;
+                Hparams.filterByConvexity = true;
+                Hparams.minConvexity = 0.30;    
+                Hparams.filterByInertia = true;
+                Hparams.maxInertiaRatio = 0.8;
+
+                SimpleBlobDetector Hdetector(Hparams);
+
+                std::vector<KeyPoint> Hkeypointsred,Hkeypointsblue,Hkeypointsgreen;
+
+                Hdetector.detect( srcred, Hkeypointsred);
+                Hdetector.detect( srcblue, Hkeypointsblue);
+                Hdetector.detect( srcgreen, Hkeypointsgreen);
+
+                marker[count]=detectPoster(Hkeypointsred,Hkeypointsgreen,Hkeypointsblue);
+                count++;
+            }
+            else
+            {
+                i=i+40;
+            }
+            if(count==3)
+            {
+                if ((marker[1]-marker[0]==1) || (marker[2]-marker[1]==1))
+                {
+                    angleArrayLock.lock();
+                    currAngleLock.lock();
+                    int k2=marker[1];
+                    int k1=(k2-1)%14;
+                    int k3=(k2+1)%14;
+                    thetasMessage.angular.x=fmod(angles[k1],360.0)*PI/180.0;
+                    thetasMessage.angular.y=fmod(angles[k2],360.0)*PI/180.0;
+                    thetasMessage.angular.z=fmod(angles[k3],360.0)*PI/180.0;
+                    thetasMessage.linear.x = fmod(fmod(currAngle,360.0)+(xValues[0]-320.0)*0.140625,360.0)*PI/180.0;
+                    thetasMessage.linear.y = fmod(fmod(currAngle,360.0)+(xValues[1]-320.0)*0.140625,360.0)*PI/180.0;
+                    thetasMessage.linear.z = fmod(fmod(currAngle,360.0)+(xValues[2]-320.0)*0.140625,360.0)*PI/180.0;
+                    currAngleLock.unlock();
+                    angleArrayLock.unlock();
+
+                }
+
+                break;
+            }
+            i=i+120;
+        }
+
+
+
+
+
         }
         cv::waitKey(20);
 
@@ -345,6 +448,10 @@ int main(int argc, char **argv)
         angleMessage.WBG = angles[12]; 
         angleMessage.GWR = angles[13];
         anglePub.publish(angleMessage);
+    }
+    if(currStatus==HOMING)
+    {
+        homingTwistPub.publish(thetasMessage);
     }
     angleArrayLock.unlock();
     ros::spinOnce();

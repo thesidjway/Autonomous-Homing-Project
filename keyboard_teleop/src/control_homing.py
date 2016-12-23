@@ -19,11 +19,9 @@ from std_msgs.msg import Int32
 # Finally the GUI libraries
 from PySide import QtCore, QtGui
 
-x_vel=0.0
-y_vel=0.0
 
-bool_homing=0
-bool_reading=0
+
+
 # Here we define the keyboard map for our controller (note that python has no enums, so we use a class)
 statuspub = rospy.Publisher('homingStatus',Int32,queue_size=10)
 
@@ -40,9 +38,13 @@ class KeyMapping(object):
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
 class KeyboardController(DroneVideoDisplay):
+
 	def __init__(self):
 		super(KeyboardController,self).__init__()
-		
+		self.x_vel=0.0
+		self.y_vel=0.0
+		self.bool_homing=0
+		self.bool_reading=0
 		self.pitch = 0
 		self.roll = 0
 		self.yaw_velocity = 0 
@@ -79,15 +81,15 @@ class KeyboardController(DroneVideoDisplay):
 			# Note that we don't handle the release of emergency/takeoff/landing keys here, there is no need.
 			# Now we handle moving, notice that this section is the opposite (-=) of the keypress section
 
-			if bool_homing == 0:
+			if self.bool_homing == 0:
 				if key == KeyMapping.StartHoming:
-					bool_homing=1
-			if bool_homing == 1:
+					self.bool_homing=1
+			if self.bool_homing == 1:
 				if key == KeyMapping.StopHoming:
-					bool_homing=0
-			if bool_homing == 0:
+					self.bool_homing=0
+			if self.bool_homing == 0:
 				if key == KeyMapping.StartReading:
-					bool_reading=1
+					self.bool_reading=1
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
@@ -98,9 +100,9 @@ class KeyboardController(DroneVideoDisplay):
 			
 
 	def velCallback(self, msg):
-		x_vel=msg.linear.x
-		y_vel=msg.linear.y
-		if bool_homing==1:
+		self.x_vel=msg.linear.x
+		self.y_vel=msg.linear.y
+		if self.bool_homing==1:
 			self.roll=x_vel
 			self.pitch=y_vel
 		else:
@@ -108,12 +110,12 @@ class KeyboardController(DroneVideoDisplay):
 			self.pitch=0
 
 
-		if bool_reading==0:
-			if bool_homing==0:
+		if self.bool_reading==0:
+			if self.bool_homing==0:
 				statuspub.publish(0)
-			elif bool_homing==1:
+			elif self.bool_homing==1:
 				statuspub.publish(2)
-		elif bool_reading==1:
+		elif self.bool_reading==1:
 			statuspub.publish(1)
 
 		controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)

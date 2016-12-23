@@ -13,4 +13,6 @@
 	
 	<!-- Launches the keyboard controller -->
 	<node name="control_homing" pkg="teleop_homing" type="control_homing.py" required="true"/>
+	<node name="labeldetect" pkg="labels" type="labeldetect" required="true"/>
+	<node name="planner" pkg="homing_planner" type="planner" required="true"/>
 </launch>
