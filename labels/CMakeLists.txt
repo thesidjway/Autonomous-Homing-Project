@@ -64,4 +64,9 @@ target_link_libraries(labeldetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(labeldetect roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
 
+add_executable(feedtest src/feedTest.cpp)
+target_link_libraries(feedtest ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(feedtest roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
+
+
 
