@@ -32,8 +32,9 @@ class KeyMapping(object):
 	Land             = QtCore.Qt.Key.Key_H
 	Emergency        = QtCore.Qt.Key.Key_Space
 	StartReading	 = QtCore.Qt.Key.Key_Z
-	StartHoming 	 = QtCore.Qt.Key.Key_X
-	StopHoming  	 = QtCore.Qt.Key.Key_C
+	StopReading	 	 = QtCore.Qt.Key.Key_X
+	StartHoming 	 = QtCore.Qt.Key.Key_C
+	StopHoming  	 = QtCore.Qt.Key.Key_V
 
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
@@ -87,9 +88,12 @@ class KeyboardController(DroneVideoDisplay):
 			if self.bool_homing == 1:
 				if key == KeyMapping.StopHoming:
 					self.bool_homing=0
-			if self.bool_homing == 0:
+			if self.bool_reading == 0:
 				if key == KeyMapping.StartReading:
 					self.bool_reading=1
+			if self.bool_reading == 1:
+				if key == KeyMapping.StopReading:
+					self.bool_reading=0
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
