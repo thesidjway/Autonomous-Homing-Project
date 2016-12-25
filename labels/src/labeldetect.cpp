@@ -38,7 +38,7 @@ labels::LabelAngles angleMessage;
 
 float fmodAng(float a)
 {
-    return (a<0)*360.0+a;
+    return (a<0)*360.0-(a>360)*360.0+a;
 }
 float dist(Point2f a1,Point2f a2)
 {
