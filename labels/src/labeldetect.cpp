@@ -36,6 +36,10 @@ int currStatus=IDLE;
 geometry_msgs::Twist thetasMessage;
 labels::LabelAngles angleMessage;
 
+float fmodAng(float a)
+{
+    return (a<0)*360.0+a;
+}
 float dist(Point2f a1,Point2f a2)
 {
   return sqrt(pow(a2.x-a1.x,2)+pow(a2.y-a1.y,2));
@@ -291,7 +295,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 angleArrayLock.lock();
                 if(fabs(angles[returned[2]])<0.01)
                 {
-                    angles[returned[2]]=currAngle;
+                    angles[returned[2]]=fmodAng(currAngle);
                     cout<<angles[returned[2]]<<endl;
                 }
                 angleArrayLock.unlock();
@@ -389,12 +393,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     int k2=marker[1];
                     int k1=(k2-1)%14;
                     int k3=(k2+1)%14;
-                    thetasMessage.angular.x=fmod(angles[k1],360.0)*PI/180.0;
-                    thetasMessage.angular.y=fmod(angles[k2],360.0)*PI/180.0;
-                    thetasMessage.angular.z=fmod(angles[k3],360.0)*PI/180.0;
-                    thetasMessage.linear.x = fmod(fmod(currAngle,360.0)+(xValues[0]-320.0)*0.140625,360.0)*PI/180.0;
-                    thetasMessage.linear.y = fmod(fmod(currAngle,360.0)+(xValues[1]-320.0)*0.140625,360.0)*PI/180.0;
-                    thetasMessage.linear.z = fmod(fmod(currAngle,360.0)+(xValues[2]-320.0)*0.140625,360.0)*PI/180.0;
+                    thetasMessage.angular.x=angles[k1]*PI/180.0;
+                    thetasMessage.angular.y=angles[k2]*PI/180.0;
+                    thetasMessage.angular.z=angles[k3]*PI/180.0;
+                    thetasMessage.linear.x = fmodAng(fmodAng(currAngle)-(xValues[0]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.linear.y = fmodAng(fmodAng(currAngle)-(xValues[1]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.linear.z = fmodAng(fmodAng(currAngle)-(xValues[2]-320.0)*0.14375)*PI/180.0;
                     currAngleLock.unlock();
                     angleArrayLock.unlock();
 
