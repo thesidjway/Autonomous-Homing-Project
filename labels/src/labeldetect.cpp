@@ -429,13 +429,18 @@ int main(int argc, char **argv)
   ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100);
   ros::Publisher anglePub = nh.advertise <labels::LabelAngles>("labelAngles",100);
-  ros::Rate loop_rate(50);
+  ros::Rate loop_rate(20);
 
   while(ros::ok())
   {
     angleArrayLock.lock();
+
+    //cout<<angles[0]<<" "<<angles[1]<<" "<<angles[2]<<" "<<angles[3]<<" "<<angles[4]<<" "<<angles[5]<<" "<<angles[6]<<" "<<angles[7]<<" "<<angles[8]<<" "<<angles[9]<<" "<<angles[10]<<" "<<angles[11]<<" "<<angles[12]<<" "<<angles[13]<<endl;
+    
+    
     if(isnonzero(angles,14)==1)
     {
+        //cout<<"READING DONE"<<endl;
         angleMessage.RWB = angles[0];
         angleMessage.RGB = angles[1];
         angleMessage.GWB = angles[2];
@@ -452,11 +457,12 @@ int main(int argc, char **argv)
         angleMessage.GWR = angles[13];
         anglePub.publish(angleMessage);
     }
+    angleArrayLock.unlock();
     if(currStatus==HOMING)
     {
         homingTwistPub.publish(thetasMessage);
     }
-    angleArrayLock.unlock();
+    
     ros::spinOnce();
   }
   return 0;

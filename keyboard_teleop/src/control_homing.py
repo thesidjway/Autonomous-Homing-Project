@@ -103,8 +103,8 @@ class KeyboardController(DroneVideoDisplay):
 		self.x_vel=msg.linear.x
 		self.y_vel=msg.linear.y
 		if self.bool_homing==1:
-			self.roll=x_vel
-			self.pitch=y_vel
+			self.roll=self.x_vel
+			self.pitch=self.y_vel
 		else:
 			self.roll=0
 			self.pitch=0

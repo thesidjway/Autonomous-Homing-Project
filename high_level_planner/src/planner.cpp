@@ -86,8 +86,8 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     }
     
     vel_lock.lock();
-    vel_msg.linear.x=vel[0];
-    vel_msg.linear.y=vel[1];
+    vel_msg.linear.x=-1.0*vel[0];
+    vel_msg.linear.y=-1.0*vel[1];
     vel_lock.unlock();
 
     
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
     ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
-    ros::Rate loop_rate(50);
+    ros::Rate loop_rate(30);
     while(ros::ok())
     {
         vel_lock.lock();
