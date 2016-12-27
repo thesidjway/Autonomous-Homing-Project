@@ -266,7 +266,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         detector.detect( srcred, keypointsred);
         detector.detect( srcblue, keypointsblue);
         detector.detect( srcgreen, keypointsgreen);
-
+       
         Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
 
         
@@ -274,10 +274,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
         drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
-
+        if(currStatus==READING)
+        {
         imshow("keypointsR", im_with_keypoints_red);
         imshow("keypointsG", im_with_keypoints_green);
         imshow("keypointsB", im_with_keypoints_blue);
+        }
 
         // imshow("Original",detectionImg);
 
@@ -296,7 +298,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 if(fabs(angles[returned[2]])<0.01)
                 {
                     angles[returned[2]]=fmodAng(currAngle);
-                    cout<<angles[returned[2]]<<endl;
+                    cout<<returned[2]<<endl;
                 }
                 angleArrayLock.unlock();
 
@@ -313,12 +315,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 keypointsall.push_back(keypointsblue[l].pt.x);
 
 
-        int i=40;
+        int i=0;
         float temp=-1;
         int count=0;
         int marker[3];
         float xValues[3];
-        while(i<480)
+        float leftValues[3];
+        while(i<520)
         {
             int k=i+120;
             int num=0;
@@ -334,6 +337,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             if (num>=2)
             {
                 xValues[count]=temp;
+                leftValues[count]=i;
                 Rect newROI(i,0,120,360);
                 detectionImg=detectionImgFull(newROI);
                 cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
@@ -386,6 +390,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             }
             if(count==3)
             {
+                line(detectionImgFull,Point(leftValues[0],20),Point(leftValues[0],340),Scalar(0,255,0),1,8,0);
+                line(detectionImgFull,Point(leftValues[1],20),Point(leftValues[1],340),Scalar(0,255,0),1,8,0);
+                line(detectionImgFull,Point(leftValues[2],20),Point(leftValues[2],340),Scalar(0,255,0),1,8,0);
+                line(detectionImgFull,Point(xValues[0],20),Point(xValues[0],340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[1],20),Point(xValues[1],340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[2],20),Point(xValues[2],340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(leftValues[0]+120,20),Point(leftValues[0]+120,340),Scalar(0,0,255),1,8,0);
+                line(detectionImgFull,Point(leftValues[1]+120,20),Point(leftValues[1]+120,340),Scalar(0,0,255),1,8,0);
+                line(detectionImgFull,Point(leftValues[2]+120,20),Point(leftValues[2]+120,340),Scalar(0,0,255),1,8,0);
+                imshow("xValues",detectionImgFull);
                 if ((marker[1]-marker[0]==1) || (marker[2]-marker[1]==1))
                 {
                     angleArrayLock.lock();

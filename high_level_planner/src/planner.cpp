@@ -4,12 +4,15 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <mutex>
+#include "ardrone_autonomy/Navdata.h"
 
 #define PI 3.14159
 
 using namespace std;
 
-std::mutex vel_lock;
+float currAngle=0;
+
+std::mutex vel_lock, currAngleLock;
 
 geometry_msgs::Twist vel_msg;
 float newTan(float a,float b)
@@ -18,6 +21,14 @@ float newTan(float a,float b)
 }
 
 float theta_1,theta_2,theta_3,theta_1s,theta_2s,theta_3s,beta_32,beta_21,beta_13,beta_13s,beta_32s,beta_21s;
+
+
+void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
+{
+  currAngleLock.lock();
+  currAngle=msg->rotZ;
+  currAngleLock.unlock();
+}
 
 void angleCallback(const geometry_msgs::Twist::ConstPtr& msg) 
 { 
@@ -81,8 +92,10 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
 
     for(int i=0;i<3;i++)
     {
-        vel[0]+=0.1*MULT[i][0];
-        vel[1]+=0.1*MULT[i][1];
+        currAngleLock.lock();
+        vel[0]+=0.1*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
+        vel[1]+=0.1*(MULT[i][1]*cos(currAngle)-MULT[i][0]*sin(currAngle));
+        currAngleLock.unlock();
     }
     
     vel_lock.lock();
@@ -99,6 +112,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
     ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
+    ros::Subscriber navSub = n.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
     ros::Rate loop_rate(30);
     while(ros::ok())
     {
