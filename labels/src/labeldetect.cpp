@@ -1,30 +1,37 @@
-#include <ros/ros.h>
+//ros includes and ros messages
+#include <ros/ros.h> 
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/Twist.h>
+#include "ardrone_autonomy/Navdata.h"
 #include <sensor_msgs/image_encodings.h>
+#include <image_transport/image_transport.h>
+
+//opencv includes
 #include <opencv2/imgproc/imgproc.hpp>
-#include <math.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <image_transport/image_transport.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/nonfree/nonfree.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
-#include "ardrone_autonomy/Navdata.h"
+
+//C++ includes
+#include <math.h>
 #include <mutex>
 #include <algorithm>
-#include <labels/LabelAngles.h>
+
+int prevAngle=-1;
 
 #define IDLE 0
 #define READING 1
 #define HOMING 2
+#define NUMLABELS 16
 
 #define PI 3.14159
 
-float angles[14]; //RWB,RGB,GWB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,WBG,GWR
+float angles[NUMLABELS]; //RWB,RGB,GWB,GRB,BRG,WRB,BGR,WBR,WRG,GBR,BWR,WGR,WGB,RBG,WBG,GWR
 using namespace cv;
 using namespace std;
 float currAngle;
@@ -33,8 +40,7 @@ int returned[5]={-1,-1,-1,-1,-1};
 int currStatus=IDLE;
 
 
-geometry_msgs::Twist thetasMessage;
-labels::LabelAngles angleMessage;
+geometry_msgs::Twist thetasMessage; //message that contains theta angles used in planner wrt N of earth.
 
 float fmodAng(float a)
 {
@@ -71,7 +77,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                     if(KB[j].pt.y < KR[i].pt.y)
                     {
                         //cout<<"BGR"<<endl;
-                        return 5;
+                        return 6;
                     }
                     else if(KB[j].pt.y > KR[i].pt.y)
                     {
@@ -84,6 +90,11 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                     if(KB[j].pt.y < KG[k].pt.y)
                     {
                         //cout<<"BRG"<<endl;
+                        return 4;
+                    }
+                    else if(KB[j].pt.y > KG[k].pt.y)
+                    {
+                        //cout<<"GRB"<<endl;
                         return 3;
                     }
                 }
@@ -92,7 +103,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                     if(KR[i].pt.y > KG[k].pt.y)
                     {
                        // cout<<"GBR"<<endl;
-                        return 8;
+                        return 9;
+                    }
+                    else if(KR[i].pt.y < KG[k].pt.y)
+                    {
+                       // cout<<"RBG"<<endl;
+                        return 13;
                     }
                 }
             }
@@ -102,12 +118,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 if(KB[j].pt.y < KR[i].pt.y)
                 {
                     //cout<<"WBR"<<endl;
-                    return 6;
+                    return 7;
                 }
                 else
                 {
                     //cout<<"WRB"<<endl;
-                    return 4;
+                    return 5;
                 }
             }
             else if (dist(KR[i].pt,KB[j].pt)<4*KR[i].size)
@@ -115,7 +131,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 if(KB[j].pt.y < KR[i].pt.y)
                 {
                     //cout<<"BWR"<<endl;
-                    return 9;
+                    return 10;
                 }
                 else
                 {
@@ -131,20 +147,20 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 if(KR[i].pt.y < KG[k].pt.y)
                 {
                     //cout<<"WRG"<<endl;
-                    return 7;
+                    return 8;
                 }
                 else
                 {
                     //cout<<"WGR"<<endl;
-                    return 10;
+                    return 11;
                 }
             }
             else if (dist(KG[k].pt,KR[i].pt)<4*KG[k].size)
             { 
-                if(KR[i].pt.y > KG[i].pt.y)
+                if(KR[i].pt.y < KG[i].pt.y)
                 {
                     //cout<<"GWR"<<endl;
-                    return 13;
+                    return 15;
                 }
             }        
         }
@@ -158,12 +174,12 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                 if(KB[j].pt.y < KG[k].pt.y)
                 {
                     //cout<<"WBG"<<endl;
-                    return 12;
+                    return 14;
                 }
                 else
                 {
                     //cout<<"WGB"<<endl;
-                    return 11;
+                    return 12;
                 }
             }
             else if (dist(KG[k].pt,KB[j].pt)<4*KG[k].size)
@@ -184,7 +200,7 @@ bool myfunction (int i,int j) { return (i<j); }
 
 void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
 {
-    currStatus=msg->data;
+    currStatus=msg->data; 
 }
 
 void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
@@ -200,12 +216,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         {
             return;
         }
-        Rect myROI(260,0,120,360);
+        Rect myROI(260,0,120,240);
         Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
         Mat detectionImgFull,detectionImg;
         Mat detectionImgHSV,detectionImgGray;
 
-        cv_bridge::CvImagePtr cv_ptr;
+        cv_bridge::CvImagePtr cv_ptr; //library to convert ros image messages to OpenCV types
 
         try
         {
@@ -297,8 +313,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 angleArrayLock.lock();
                 if(fabs(angles[returned[2]])<0.01)
                 {
-                    angles[returned[2]]=fmodAng(currAngle);
-                    cout<<returned[2]<<endl;
+                	if(returned[2]==(prevAngle+1)%NUMLABELS || returned[2]==(prevAngle-1)%NUMLABELS || prevAngle==-1)
+                	{
+                    	angles[returned[2]]=fmodAng(currAngle);
+                    	cout<<returned[2]<<endl;
+                    	prevAngle=returned[2];
+                    }
+
                 }
                 angleArrayLock.unlock();
 
@@ -405,14 +426,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     angleArrayLock.lock();
                     currAngleLock.lock();
                     int k2=marker[1];
-                    int k1=(k2-1)%14;
-                    int k3=(k2+1)%14;
+                    int k1=(k2-1)%NUMLABELS;
+                    int k3=(k2+1)%NUMLABELS;
                     thetasMessage.angular.x=angles[k1]*PI/180.0;
                     thetasMessage.angular.y=angles[k2]*PI/180.0;
                     thetasMessage.angular.z=angles[k3]*PI/180.0;
                     thetasMessage.linear.x = fmodAng(fmodAng(currAngle)-(xValues[0]-320.0)*0.14375)*PI/180.0;
                     thetasMessage.linear.y = fmodAng(fmodAng(currAngle)-(xValues[1]-320.0)*0.14375)*PI/180.0;
                     thetasMessage.linear.z = fmodAng(fmodAng(currAngle)-(xValues[2]-320.0)*0.14375)*PI/180.0;
+                    cout<<"ThetaStar: "<<angles[k1]*PI/180.0<<" "<<angles[k2]*PI/180.0<<" "<<angles[k3]*PI/180.0<<" "<<endl;
+                    cout<<"Theta: "<< fmodAng(fmodAng(currAngle)-(xValues[0]-320.0)*0.14375)*PI/180.0 <<" "<< fmodAng(fmodAng(currAngle)-(xValues[1]-320.0)*0.14375)*PI/180.0 << " " <<fmodAng(fmodAng(currAngle)-(xValues[2]-320.0)*0.14375)*PI/180.0 << endl;
+                    cout<<"Current Angle: "<<currAngle<<endl;
                     currAngleLock.unlock();
                     angleArrayLock.unlock();
 
@@ -438,15 +462,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 int main(int argc, char **argv)
 {
   
-  ros::init(argc, argv, "stitch_node");
+  ros::init(argc, argv, "stitch_node");  //stitch_node is the node name.
 
   ros::NodeHandle nh;
-  ros::Subscriber statusSub = nh.subscribe <std_msgs::Int32>("homingStatus", 100, statusCallBack); 
-  image_transport::ImageTransport it(nh);
-  image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback);
+  ros::Subscriber statusSub = nh.subscribe <std_msgs::Int32>("homingStatus", 100, statusCallBack); //homing status defines the state of the code, 0 = IDLE, 1= READING, 2=HOMING
+  image_transport::ImageTransport it(nh); //for communicating image messages
+  image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback); 
   ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
-  ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100);
-  ros::Publisher anglePub = nh.advertise <labels::LabelAngles>("labelAngles",100);
+  ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
   ros::Rate loop_rate(20);
 
   while(ros::ok())
@@ -454,27 +477,6 @@ int main(int argc, char **argv)
     angleArrayLock.lock();
 
     //cout<<angles[0]<<" "<<angles[1]<<" "<<angles[2]<<" "<<angles[3]<<" "<<angles[4]<<" "<<angles[5]<<" "<<angles[6]<<" "<<angles[7]<<" "<<angles[8]<<" "<<angles[9]<<" "<<angles[10]<<" "<<angles[11]<<" "<<angles[12]<<" "<<angles[13]<<endl;
-    
-    
-    if(isnonzero(angles,14)==1)
-    {
-        //cout<<"READING DONE"<<endl;
-        angleMessage.RWB = angles[0];
-        angleMessage.RGB = angles[1];
-        angleMessage.GWB = angles[2];
-        angleMessage.BRG = angles[3];
-        angleMessage.WRB = angles[4]; 
-        angleMessage.BGR = angles[5];
-        angleMessage.WBR = angles[6];
-        angleMessage.WRG = angles[7]; 
-        angleMessage.GBR = angles[8]; 
-        angleMessage.BWR = angles[9]; 
-        angleMessage.WGR = angles[10]; 
-        angleMessage.WGB = angles[11]; 
-        angleMessage.WBG = angles[12]; 
-        angleMessage.GWR = angles[13];
-        anglePub.publish(angleMessage);
-    }
     angleArrayLock.unlock();
     if(currStatus==HOMING)
     {

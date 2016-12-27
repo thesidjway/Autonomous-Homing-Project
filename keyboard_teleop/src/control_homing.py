@@ -119,8 +119,10 @@ class KeyboardController(DroneVideoDisplay):
 				statuspub.publish(0)
 			elif self.bool_homing==1:
 				statuspub.publish(2)
+				print "vels: " + str(self.roll) + " " + str(self.pitch)
 		elif self.bool_reading==1:
 			statuspub.publish(1)
+
 
 		controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)
 

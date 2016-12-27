@@ -93,8 +93,8 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     for(int i=0;i<3;i++)
     {
         currAngleLock.lock();
-        vel[0]+=0.1*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
-        vel[1]+=0.1*(MULT[i][1]*cos(currAngle)-MULT[i][0]*sin(currAngle));
+        vel[0]+=0.1*(MULT[i][0]*sin(currAngle)-MULT[i][1]*cos(currAngle));
+        vel[1]+=0.1*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
         currAngleLock.unlock();
     }
     
@@ -113,11 +113,10 @@ int main(int argc, char **argv)
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
     ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
     ros::Subscriber navSub = n.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
-    ros::Rate loop_rate(30);
+    ros::Rate loop_rate(20);
     while(ros::ok())
     {
         vel_lock.lock();
-        cout<< vel_msg.linear.x<<" "<< vel_msg.linear.y<<endl;
         vel_pub.publish(vel_msg);
         vel_lock.unlock();
         ros::spinOnce();
