@@ -28,6 +28,7 @@ int prevAngle=-1;
 #define READING 1
 #define HOMING 2
 #define NUMLABELS 16
+#define erosion_size 1
 
 #define PI 3.14159
 
@@ -72,7 +73,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
             
             for(int k=0;k<KG.size();k++)
             {
-                if(dist(KG[k].pt,KB[j].pt)<1.5*KG[k].size && dist(KG[k].pt,KR[i].pt)<1.5*KG[k].size)
+                if(dist(KG[k].pt,KB[j].pt)<2*KG[k].size && dist(KG[k].pt,KR[i].pt)<2*KG[k].size)
                 {
                     if(KB[j].pt.y < KR[i].pt.y)
                     {
@@ -85,7 +86,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                         return 1;
                     }
                 }
-                else if(dist(KR[i].pt,KB[j].pt)<1.5*KR[i].size && dist(KG[k].pt,KR[i].pt)<1.5*KR[i].size)
+                else if(dist(KR[i].pt,KB[j].pt)<2*KR[i].size && dist(KG[k].pt,KR[i].pt)<2*KR[i].size)
                 {
                     if(KB[j].pt.y < KG[k].pt.y)
                     {
@@ -98,7 +99,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
                         return 3;
                     }
                 }
-                else if (dist(KR[i].pt,KB[j].pt)<1.5*KB[j].size && dist(KG[k].pt,KB[j].pt)<1.5*KB[j].size)
+                else if (dist(KR[i].pt,KB[j].pt)<2*KB[j].size && dist(KG[k].pt,KB[j].pt)<2*KB[j].size)
                 {
                     if(KR[i].pt.y > KG[k].pt.y)
                     {
@@ -218,7 +219,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         }
         Rect myROI(260,0,120,360);
         Rect myROI2(0,0,640,240);
-        Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite;
+        Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite,dilatedblue;
         Mat detectionImgFull,detectionImg;
         Mat detectionImgHSV,detectionImgGray;
 
@@ -244,23 +245,35 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             detectionImg=detectionImgFull(myROI2);
         }
 
+        
+        Mat element = getStructuringElement( MORPH_CROSS,
+                                       Size( 2*erosion_size + 1, 2*erosion_size+1 ),
+                                       Point( erosion_size, erosion_size ));
+
+
+
+        
         cvtColor(detectionImg,detectionImgHSV,CV_BGR2HSV);
         cvtColor(detectionImg,detectionImgGray,CV_BGR2GRAY);
 
-        inRange(detectionImgHSV,Scalar(0,50,75),Scalar(4,255,255),srcred1);
-        inRange(detectionImgHSV,Scalar(170,50,75),Scalar(180,255,255),srcred2);
+
+        inRange(detectionImgHSV,Scalar(0,50,40),Scalar(4,255,255),srcred1);
+        inRange(detectionImgHSV,Scalar(170,50,40),Scalar(180,255,255),srcred2);
         bitwise_or(srcred1,srcred2,srcred);
 
-        inRange(detectionImgHSV,Scalar(55,40,20),Scalar(82,255,255),srcgreen);
-        inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),srcblue);
+        inRange(detectionImgHSV,Scalar(55,40,20),Scalar(88,255,255),srcgreen);
+        inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),dilatedblue);
 
         inRange(detectionImgGray,0,99,srcdark);
         inRange(detectionImgGray,100,255,srcwhite);
 
-        bitwise_and(srcdark,srcblue,srcblue);
+        bitwise_and(srcdark,dilatedblue,dilatedblue);
         bitwise_and(srcdark,srcgreen,srcgreen);
+        bitwise_and(srcdark,srcred,srcred);
 
-        imshow("fuan9", srcred);
+        erode(dilatedblue,srcblue,element);
+
+        imshow("fuan9", srcgreen);
 
         SimpleBlobDetector::Params params;
 
@@ -271,9 +284,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         params.minArea = 50;
         params.filterByCircularity = false;
         params.filterByConvexity = true;
-        params.minConvexity = 0.30;    
+        params.minConvexity = 0.2;    
         params.filterByInertia = true;
-        params.maxInertiaRatio = 0.8;
+        params.maxInertiaRatio = 0.85;
 
         SimpleBlobDetector detector(params);
 
@@ -292,7 +305,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
 
-        if(currStatus==READING)
+        if(currStatus==HOMING||currStatus==READING)
         {
             imshow("keypointsR", im_with_keypoints_red);
             imshow("keypointsG", im_with_keypoints_green);
@@ -335,8 +348,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             int count=0;
             vector<int> goodMatches;
             vector<int> xValues;
-
-            cout<<endl;
             start:
 
             if(count==3)
@@ -344,10 +355,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 line(detectionImgFull,Point(xValues[0],20),Point(xValues[0],340),Scalar(255,0,0),1,8,0);
                 line(detectionImgFull,Point(xValues[1],20),Point(xValues[1],340),Scalar(255,0,0),1,8,0);
                 line(detectionImgFull,Point(xValues[2],20),Point(xValues[2],340),Scalar(255,0,0),1,8,0);
+
                 imshow("hello",detectionImgFull);
+
                 sort(goodMatches.begin(),goodMatches.end(),myfunction);
+                sort(xValues.begin(),xValues.end(),myfunction);
+
+                cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
                 
-                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] && (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
+                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
                 {   
                     angleArrayLock.lock();
                     currAngleLock.lock();
@@ -368,11 +384,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             {
                 for(int j=0;j<keypointsgreen.size();j++)
                 {
-                    if(dist(keypointsred[i].pt,keypointsgreen[j].pt)<4*keypointsgreen[j].size)
+                    if(dist(keypointsred[i].pt,keypointsgreen[j].pt)<6*keypointsgreen[j].size)
                     {   
                         for(int k=0;k<keypointsblue.size();k++)
                         {
-                            if(dist(keypointsblue[k].pt,keypointsgreen[j].pt)<4*keypointsgreen[j].size)
+                            if(dist(keypointsblue[k].pt,keypointsgreen[j].pt)<6*keypointsgreen[j].size)
                             {
                                 if(keypointsblue[k].pt.y > keypointsgreen[j].pt.y && keypointsblue[k].pt.y > keypointsred[i].pt.y && keypointsgreen[j].pt.y > keypointsred[i].pt.y)
                                 {
@@ -381,7 +397,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"RGB"<<endl;
+                                    //cout<<"RGB"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -393,7 +409,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"GRB"<<endl;
+                                    //cout<<"GRB"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -405,7 +421,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"RBG"<<endl;
+                                    //cout<<"RBG"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -417,7 +433,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"BRG"<<endl;
+                                    //cout<<"BRG"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -429,7 +445,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"BGR"<<endl;
+                                    //cout<<"BGR"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -441,7 +457,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                                     keypointsred.erase(keypointsred.begin()+i);
                                     keypointsgreen.erase(keypointsgreen.begin()+j);
                                     keypointsblue.erase(keypointsblue.begin()+k);
-                                    cout<<"GBR"<<endl;
+                                    //cout<<"GBR"<<endl;
                                     count++;
                                     goto start;
                                 }
@@ -456,7 +472,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
                             keypointsred.erase(keypointsred.begin()+i);
                             keypointsgreen.erase(keypointsgreen.begin()+j);
-                            cout<<"WGR"<<endl;
+                            //cout<<"WGR"<<endl;
                             count++;
                             goto start;
                         }
@@ -466,13 +482,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                             {
                                 goodMatches.push_back(8);
                                 xValues.push_back(keypointsred[i].pt.x); 
-                                cout<<"WRG"<<endl;
+                                //cout<<"WRG"<<endl;
                             }
                             else
                             {
                                 goodMatches.push_back(15);
                                 xValues.push_back(keypointsred[i].pt.x); 
-                                cout<<"RWG"<<endl;
+                                //cout<<"RWG"<<endl;
                             }
 
                             keypointsred.erase(keypointsred.begin()+i);
@@ -486,21 +502,23 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 }
                 for(int k=0;k<keypointsblue.size();k++)
                 {
+                    if(dist(keypointsred[i].pt,keypointsblue[k].pt)<6*keypointsblue[k].size)
+                    {   
 
                         if(keypointsred[i].pt.y > keypointsblue[k].pt.y)
                         {   
 
-                            if(dist(keypointsblue[k].pt,keypointsred[i].pt)<2*keypointsblue[k].size)
+                            if(dist(keypointsblue[k].pt,keypointsred[i].pt)<2.5*keypointsblue[k].size)
                             {
                                 goodMatches.push_back(7);
                                 xValues.push_back(keypointsred[i].pt.x); 
-                                cout<<"WBR"<<endl;
+                                //cout<<"WBR"<<endl;
                             }
                             else
                             {
                                 goodMatches.push_back(10);
                                 xValues.push_back(keypointsred[i].pt.x); 
-                                cout<<"BWR"<<endl;
+                                //cout<<"BWR"<<endl;
                             }
 
                             keypointsred.erase(keypointsred.begin()+i);
@@ -511,17 +529,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                         }
                         else if(keypointsblue[k].pt.y > keypointsred[i].pt.y)
                         {
-                            if(dist(keypointsblue[k].pt,keypointsred[i].pt)<2*keypointsblue[k].size)
+                            if(dist(keypointsblue[k].pt,keypointsred[i].pt)<2.5*keypointsblue[k].size)
                             {
                                 goodMatches.push_back(5);
                                 xValues.push_back(keypointsred[i].pt.x);
-                                cout<<"WRB"<<endl; 
+                                //cout<<"WRB"<<endl; 
                             }
                             else
                             {
                                 goodMatches.push_back(0);
                                 xValues.push_back(keypointsred[i].pt.x);
-                                cout<<"RWB"<<endl;
+                                //cout<<"RWB"<<endl;
                             }
                             keypointsred.erase(keypointsred.begin()+i);
                             keypointsblue.erase(keypointsblue.begin()+k);
@@ -529,6 +547,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                             count++;
                             goto start;
                         }
+                    }
                 }
 
             }
@@ -536,7 +555,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             {
                 for(int k=0;k<keypointsblue.size();k++)
                 {
-                    if(dist(keypointsblue[k].pt,keypointsgreen[j].pt)<4*keypointsgreen[j].size)
+                    if(dist(keypointsblue[k].pt,keypointsgreen[j].pt)<6*keypointsgreen[j].size)
                     {
                         if(keypointsblue[k].pt.y > keypointsgreen[j].pt.y)
                         { 
@@ -544,13 +563,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                             {
                                 goodMatches.push_back(12);
                                 xValues.push_back(keypointsgreen[j].pt.x); 
-                                cout<<"WGB"<<endl;
+                                //cout<<"WGB"<<endl;
                             }
                             else
                             {
                                 goodMatches.push_back(2);
                                 xValues.push_back(keypointsgreen[j].pt.x); 
-                                cout<<"GWB"<<endl;
+                                //cout<<"GWB"<<endl;
                             }
                             keypointsblue.erase(keypointsblue.begin()+k);
                             keypointsgreen.erase(keypointsgreen.begin()+j);
@@ -564,7 +583,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
                             keypointsgreen.erase(keypointsgreen.begin()+j);
                             keypointsblue.erase(keypointsblue.begin()+k);
-                            cout<<"WBG"<<endl;
+                            //cout<<"WBG"<<endl;
                             count++;
                             goto start;
                         }
