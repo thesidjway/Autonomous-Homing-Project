@@ -59,7 +59,7 @@ include_directories(
 
 
 
-add_executable(labeldetect src/labeldetect.cpp)
+add_executable(labeldetect src/labelDetectNew.cpp)
 target_link_libraries(labeldetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(labeldetect roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
