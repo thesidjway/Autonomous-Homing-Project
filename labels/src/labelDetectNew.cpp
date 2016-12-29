@@ -372,9 +372,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     thetasMessage.angular.x=angles[goodMatches[0]]*PI/180.0;
                     thetasMessage.angular.y=angles[goodMatches[1]]*PI/180.0;
                     thetasMessage.angular.z=angles[goodMatches[2]]*PI/180.0;
-                    thetasMessage.linear.x = fmodAng(fmodAng(currAngle)-(xValues[0]-320.0)*0.14375)*PI/180.0;
-                    thetasMessage.linear.y = fmodAng(fmodAng(currAngle)-(xValues[1]-320.0)*0.14375)*PI/180.0;
-                    thetasMessage.linear.z = fmodAng(fmodAng(currAngle)-(xValues[2]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.linear.x = fmodAng(fmodAng(currAngle)+(xValues[0]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.linear.y = fmodAng(fmodAng(currAngle)+(xValues[1]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.linear.z = fmodAng(fmodAng(currAngle)+(xValues[2]-320.0)*0.14375)*PI/180.0;
 
                     currAngleLock.unlock();                
                     angleArrayLock.unlock();
