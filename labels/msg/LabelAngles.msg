@@ -1,6 +1,7 @@
 float32 RWB
 float32 RGB 
-float32 GWB 
+float32 GWB
+float32 GRB 
 float32 BRG 
 float32 WRB 
 float32 BGR 
@@ -9,6 +10,7 @@ float32 WRG
 float32 GBR 
 float32 BWR 
 float32 WGR 
-float32 WGB 
+float32 WGB
+float32 RBG 
 float32 WBG 
 float32 GWR
