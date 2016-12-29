@@ -1,4 +1,0 @@
-CFLAGS = `pkg-config --cflags --libs opencv`
-
-% : %.cpp
-	g++ $(CFLAGS) $(LIBS) -o $@ $<
