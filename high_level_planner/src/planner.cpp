@@ -23,10 +23,13 @@ float newTan(float a,float b)
 float theta_1,theta_2,theta_3,theta_1s,theta_2s,theta_3s,beta_32,beta_21,beta_13,beta_13s,beta_32s,beta_21s;
 
 
-void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
+void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg) 
 {
   currAngleLock.lock();
-  currAngle=msg->rotZ;
+  geometry_msgs::Vector3 magData=msg->vector;
+  float x_val=magData.x;
+  float y_val=magData.y;
+  currAngle=atan2(y_val,x_val)*180.0/PI;
   currAngleLock.unlock();
 }
 
@@ -42,6 +45,9 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
 	theta_2s= msg->angular.y;
 	theta_3s= msg->angular.z;
 
+    cout<<"thetas: \t"<<theta_1<<" "<<theta_2<<" "<<theta_3<<endl;
+    cout<<"thetaStars: \t"<<theta_1s<<" "<<theta_2s<<" "<<theta_3s<<endl;
+    cout<<"currAngle \t"<<currAngle<<endl;
 	beta_21 = theta_2 - theta_1;
 	beta_21 = newTan(sin(beta_21),cos(beta_21));
 
@@ -96,11 +102,13 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
         vel[0]+=0.1*(MULT[i][0]*sin(currAngle)-MULT[i][1]*cos(currAngle));
         vel[1]+=0.1*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
         currAngleLock.unlock();
+
     }
+    cout<<"vels: \t\t"<<vel[0]<<" "<<vel[1]<<endl;
     
     vel_lock.lock();
-    vel_msg.linear.x=-1.0*vel[0];
-    vel_msg.linear.y=-1.0*vel[1];
+    vel_msg.linear.x=1.0*vel[0];
+    vel_msg.linear.y=1.0*vel[1];
     vel_lock.unlock();
 
     
@@ -112,7 +120,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
     ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
-    ros::Subscriber navSub = n.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
+    ros::Subscriber magSub = n.subscribe <geometry_msgs::Vector3Stamped>("/ardrone/mag", 100, magCallBack); 
     ros::Rate loop_rate(20);
     while(ros::ok())
     {

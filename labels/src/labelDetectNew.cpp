@@ -2,6 +2,7 @@
 #include <ros/ros.h> 
 #include <std_msgs/String.h>
 #include <std_msgs/Int32.h>
+#include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/Twist.h>
 #include "ardrone_autonomy/Navdata.h"
@@ -204,10 +205,13 @@ void statusCallBack(const std_msgs::Int32::ConstPtr& msg)
     currStatus=msg->data; 
 }
 
-void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
+void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg) 
 {
   currAngleLock.lock();
-  currAngle=msg->rotZ;
+  geometry_msgs::Vector3 magData=msg->vector;
+  float x_val=magData.x;
+  float y_val=magData.y;
+  currAngle=atan2(y_val,x_val)*180.0/PI;
   currAngleLock.unlock();
 }
 
@@ -273,8 +277,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         erode(dilatedblue,srcblue,element);
 
-        imshow("fuan9", srcgreen);
-
         SimpleBlobDetector::Params params;
 
         params.filterByColor = true;
@@ -305,7 +307,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
 
-        if(currStatus==HOMING||currStatus==READING)
+        if(currStatus==READING)
         {
             imshow("keypointsR", im_with_keypoints_red);
             imshow("keypointsG", im_with_keypoints_green);
@@ -340,7 +342,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
                 }        
                 angleArrayLock.unlock();
-
             }
         }
         else if(currStatus==HOMING)
@@ -349,7 +350,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             vector<int> goodMatches;
             vector<int> xValues;
             start:
-
+ 
             if(count==3)
             {
                 line(detectionImgFull,Point(xValues[0],20),Point(xValues[0],340),Scalar(255,0,0),1,8,0);
@@ -361,7 +362,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 sort(goodMatches.begin(),goodMatches.end(),myfunction);
                 sort(xValues.begin(),xValues.end(),myfunction);
 
-                cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
+                //cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
                 
                 if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
                 {   
@@ -607,7 +608,7 @@ int main(int argc, char **argv)
   ros::Subscriber statusSub = nh.subscribe <std_msgs::Int32>("homingStatus", 100, statusCallBack); //homing status defines the state of the code, 0 = IDLE, 1= READING, 2=HOMING
   image_transport::ImageTransport it(nh); //for communicating image messages
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback); 
-  ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
+  ros::Subscriber magSub = nh.subscribe <geometry_msgs::Vector3Stamped>("/ardrone/mag", 100, magCallBack); 
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
   ros::Rate loop_rate(20);
 

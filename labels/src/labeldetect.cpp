@@ -203,10 +203,12 @@ void statusCallBack(const std_msgs::Int32::ConstPtr& msg)
     currStatus=msg->data; 
 }
 
-void NavcallBack(const ardrone_autonomy::Navdata::ConstPtr& msg) 
+void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg) 
 {
   currAngleLock.lock();
-  currAngle=msg->rotZ;
+  float x=msg->x;
+  float y=msg->y;
+  currAngle=atan2(y,x);
   currAngleLock.unlock();
 }
 
@@ -468,7 +470,7 @@ int main(int argc, char **argv)
   ros::Subscriber statusSub = nh.subscribe <std_msgs::Int32>("homingStatus", 100, statusCallBack); //homing status defines the state of the code, 0 = IDLE, 1= READING, 2=HOMING
   image_transport::ImageTransport it(nh); //for communicating image messages
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback); 
-  ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/navdata", 100, NavcallBack); 
+  ros::Subscriber navSub = nh.subscribe <ardrone_autonomy::Navdata>("/ardrone/mag", 100, magCallBack); 
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
   ros::Rate loop_rate(20);
 
