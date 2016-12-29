@@ -15,6 +15,7 @@ ADD_DEFINITIONS(-std=c++0x )
 find_package(catkin REQUIRED COMPONENTS 
 	roscpp 
 	rospy 
+	roslib
 	std_msgs 
 	sensor_msgs
 	genmsg 
@@ -41,7 +42,7 @@ generate_messages(
 ## Declare a catkin package
 catkin_package(
 	INCLUDE_DIRS include
-	CATKIN_DEPENDS message_runtime roscpp rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge ardrone_autonomy
+	CATKIN_DEPENDS message_runtime roscpp roslib rospy geometry_msgs std_msgs sensor_msgs image_transport cv_bridge ardrone_autonomy
 	)
 	
 
@@ -61,7 +62,7 @@ include_directories(
 
 add_executable(labeldetect src/labelDetectNew.cpp)
 target_link_libraries(labeldetect ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
-add_dependencies(labeldetect roscpp rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
+add_dependencies(labeldetect roscpp roslib rospy sensor_msgs std_msgs geometry_msgs image_transport cv_bridge ardrone_autonomy)
 
 
 add_executable(feedtest src/feedTest.cpp)

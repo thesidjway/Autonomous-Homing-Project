@@ -35,6 +35,8 @@ class KeyMapping(object):
 	StopReading	 	 = QtCore.Qt.Key.Key_X
 	StartHoming 	 = QtCore.Qt.Key.Key_C
 	StopHoming  	 = QtCore.Qt.Key.Key_V
+	ReadManually 	 = QtCore.Qt.Key.Key_B
+	StopManualRead 	 = QtCore.Qt.Key.Key_N
 
 
 # Our controller definition, note that we extend the DroneVideoDisplay class
@@ -82,6 +84,14 @@ class KeyboardController(DroneVideoDisplay):
 			# Note that we don't handle the release of emergency/takeoff/landing keys here, there is no need.
 			# Now we handle moving, notice that this section is the opposite (-=) of the keypress section
 
+			if self.bool_reading==0:
+					if key == KeyMapping.ReadManually:
+						self.bool_reading=2
+						
+			if self.bool_reading==2:
+				if key == KeyMapping.StopManualRead:
+					self.bool_reading=0
+
 			if self.bool_homing == 0:
 				if key == KeyMapping.StartHoming:
 					self.bool_homing=1
@@ -91,9 +101,10 @@ class KeyboardController(DroneVideoDisplay):
 			if self.bool_reading == 0:
 				if key == KeyMapping.StartReading:
 					self.bool_reading=1
-			if self.bool_reading == 1:
+			if self.bool_reading == 0:
 				if key == KeyMapping.StopReading:
 					self.bool_reading=0
+
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
@@ -119,9 +130,12 @@ class KeyboardController(DroneVideoDisplay):
 				statuspub.publish(0)
 			elif self.bool_homing==1:
 				statuspub.publish(2)
-				#print "vels: " + str(self.roll) + " " + str(self.pitch)
+	#print "vels: " + str(self.roll) + " " + str(self.pitch)
 		elif self.bool_reading==1:
 			statuspub.publish(1)
+
+		elif self.bool_reading==2:
+				statuspub.publish(3)
 
 
 		controller.SetCommand(self.roll, self.pitch, self.yaw_velocity, self.z_velocity)

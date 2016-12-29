@@ -22,12 +22,14 @@
 #include <math.h>
 #include <mutex>
 #include <algorithm>
+#include <fstream>
 
 int prevAngle=-1;
 
 #define IDLE 0
 #define READING 1
 #define HOMING 2
+#define READFROMFILE 3
 #define NUMLABELS 16
 #define erosion_size 1
 
@@ -221,6 +223,29 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         {
             return;
         }
+
+        if(currStatus==READFROMFILE)
+        {
+            angleArrayLock.lock();
+            char data[64];
+            ifstream infile; 
+            infile.open("/home/thesidjway/ardrone_ws/src/angles.txt");
+            infile >> data; 
+            for (int a = 0; a < 16; a++)
+            {   
+                int hund=(int)data[4*a]-48;
+                int tens=(int)data[4*a+1]-48;
+                int ones=(int)data[4*a+2]-48;
+                int number=hund*100+tens*10+ones;
+                cout<<number<<endl;
+                angles[a]=number;
+            }
+            infile.close();
+            cout<<"Done Reading!"<<endl;
+            angleArrayLock.unlock();
+            return;
+        }
+
         Rect myROI(260,0,120,360);
         Rect myROI2(0,0,640,240);
         Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite,dilatedblue;
