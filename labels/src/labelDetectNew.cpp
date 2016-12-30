@@ -25,6 +25,7 @@
 #include <fstream>
 
 int prevAngle=-1;
+int haveRead= 0;
 
 #define IDLE 0
 #define READING 1
@@ -227,7 +228,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         if(currStatus==READFROMFILE)
         {
             angleArrayLock.lock();
-            char data[64];
+            char data[65];
             ifstream infile; 
             infile.open("/home/thesidjway/ardrone_ws/src/angles.txt");
             infile >> data; 
@@ -243,6 +244,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             infile.close();
             cout<<"Done Reading!"<<endl;
             angleArrayLock.unlock();
+            haveRead=1;
             return;
         }
 
@@ -382,12 +384,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 line(detectionImgFull,Point(xValues[1],20),Point(xValues[1],340),Scalar(255,0,0),1,8,0);
                 line(detectionImgFull,Point(xValues[2],20),Point(xValues[2],340),Scalar(255,0,0),1,8,0);
 
-                imshow("hello",detectionImgFull);
+
+                imshow("labelDetection",detectionImgFull);
 
                 sort(goodMatches.begin(),goodMatches.end(),myfunction);
                 sort(xValues.begin(),xValues.end(),myfunction);
 
-                //cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
+                cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
                 
                 if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
                 {   
@@ -637,10 +640,32 @@ int main(int argc, char **argv)
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
   ros::Rate loop_rate(20);
 
+
   while(ros::ok())
   {
+    ofstream myfile;
     angleArrayLock.lock();
+    if(currStatus==READING || currStatus==IDLE && haveRead==0)
+    {
+        if(isnonzero(angles,NUMLABELS))
+        {
+            myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::out);
+            myfile<<"";
+            myfile.close();
+            myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::app);
+            for(int i=0;i<NUMLABELS;i++)
+            {
+                if((int)angles[i]>=100)
+                    myfile<<(int)angles[i]<<",";
+                else if((int)angles[i]>=10)
+                    myfile<<"0"<<(int)angles[i]<<",";
+                else
+                    myfile<<"00"<<(int)angles[i]<<",";
 
+            }
+            myfile.close();
+        }
+    }
     //cout<<angles[0]<<" "<<angles[1]<<" "<<angles[2]<<" "<<angles[3]<<" "<<angles[4]<<" "<<angles[5]<<" "<<angles[6]<<" "<<angles[7]<<" "<<angles[8]<<" "<<angles[9]<<" "<<angles[10]<<" "<<angles[11]<<" "<<angles[12]<<" "<<angles[13]<<endl;
     angleArrayLock.unlock();
     if(currStatus==HOMING)

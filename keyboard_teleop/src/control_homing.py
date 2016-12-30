@@ -85,23 +85,21 @@ class KeyboardController(DroneVideoDisplay):
 			# Now we handle moving, notice that this section is the opposite (-=) of the keypress section
 
 			if self.bool_reading==0:
-					if key == KeyMapping.ReadManually:
-						self.bool_reading=2
-						
+				if key == KeyMapping.ReadManually:
+					self.bool_reading=2	
 			if self.bool_reading==2:
 				if key == KeyMapping.StopManualRead:
 					self.bool_reading=0
-
 			if self.bool_homing == 0:
 				if key == KeyMapping.StartHoming:
 					self.bool_homing=1
-			if self.bool_homing == 1:
+			elif self.bool_homing == 1:
 				if key == KeyMapping.StopHoming:
 					self.bool_homing=0
 			if self.bool_reading == 0:
 				if key == KeyMapping.StartReading:
 					self.bool_reading=1
-			if self.bool_reading == 0:
+			elif self.bool_reading == 1:
 				if key == KeyMapping.StopReading:
 					self.bool_reading=0
 
@@ -130,10 +128,8 @@ class KeyboardController(DroneVideoDisplay):
 				statuspub.publish(0)
 			elif self.bool_homing==1:
 				statuspub.publish(2)
-	#print "vels: " + str(self.roll) + " " + str(self.pitch)
 		elif self.bool_reading==1:
 			statuspub.publish(1)
-
 		elif self.bool_reading==2:
 				statuspub.publish(3)
 

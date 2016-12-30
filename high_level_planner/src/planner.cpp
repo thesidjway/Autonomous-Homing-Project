@@ -100,8 +100,8 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     for(int i=0;i<3;i++)
     {
         currAngleLock.lock();
-        vel[0]+=0.3*(MULT[i][0]*sin(currAngle)-MULT[i][1]*cos(currAngle));
-        vel[1]+=0.3*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
+        vel[0]+=0.6*(MULT[i][0]*sin(currAngle)-MULT[i][1]*cos(currAngle));
+        vel[1]+=0.6*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
         currAngleLock.unlock();
 
     }
