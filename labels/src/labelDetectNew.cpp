@@ -26,6 +26,8 @@
 
 int prevAngle=-1;
 int haveRead= 0;
+int currSum=-1;
+int prevSum=-1;
 
 #define IDLE 0
 #define READING 1
@@ -239,7 +241,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 int ones=(int)data[4*a+2]-48;
                 int number=hund*100+tens*10+ones;
                 cout<<number<<endl;
-                angles[a]=number;
+                angles[a]=number-360;
             }
             infile.close();
             cout<<"Done Reading!"<<endl;
@@ -341,7 +343,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             imshow("keypointsB", im_with_keypoints_blue);
         }
 
-        cv:waitKey(10);
+        cv:waitKey(5);
 
 
         // imshow("Original",detectionImg);
@@ -360,11 +362,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 angleArrayLock.lock();
                 if(fabs(angles[returned[2]])<0.01)
                 {
-                	if(returned[2]==(prevAngle+1)%NUMLABELS || returned[2]==(prevAngle-1)%NUMLABELS || prevAngle==-1)
-                	{
-                    	angles[returned[2]]=fmodAng(currAngle);
-                    	cout<<returned[2]<<endl;
-                    	prevAngle=returned[2];
+                    if(returned[2]==(prevAngle+1)%NUMLABELS || returned[2]==(prevAngle-1)%NUMLABELS || prevAngle==-1)
+                    {
+                        angles[returned[2]]=currAngle;
+                        cout<<returned[2]<<endl;
+                        prevAngle=returned[2];
                     }
 
                 }        
@@ -373,42 +375,58 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         }
         else if(currStatus==HOMING)
         {
-            int count=0;
+            int count=0;;
             vector<int> goodMatches;
             vector<int> xValues;
+           
             start:
  
             if(count==3)
             {
-                line(detectionImgFull,Point(xValues[0],20),Point(xValues[0],340),Scalar(255,0,0),1,8,0);
-                line(detectionImgFull,Point(xValues[1],20),Point(xValues[1],340),Scalar(255,0,0),1,8,0);
-                line(detectionImgFull,Point(xValues[2],20),Point(xValues[2],340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[0], 20),Point(xValues[0], 340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[1], 20),Point(xValues[1], 340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[2], 20),Point(xValues[2], 340),Scalar(255,0,0),1,8,0);
 
 
                 imshow("labelDetection",detectionImgFull);
 
-                sort(goodMatches.begin(),goodMatches.end(),myfunction);
-                sort(xValues.begin(),xValues.end(),myfunction);
+
+                //sort(goodMatches.begin(),goodMatches.end(),myfunction);
+                //sort(xValues.begin(),xValues.end(),myfunction);
+
 
                 cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
+
+                currSum=goodMatches[0]+goodMatches[1]+goodMatches[2];
+
                 
-                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
-                {   
+                //if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
+
+                if(prevSum == -1 || currSum == prevSum)
+                {  
                     angleArrayLock.lock();
                     currAngleLock.lock();
 
-                    thetasMessage.angular.x=angles[goodMatches[0]]*PI/180.0;
-                    thetasMessage.angular.y=angles[goodMatches[1]]*PI/180.0;
-                    thetasMessage.angular.z=angles[goodMatches[2]]*PI/180.0;
-                    thetasMessage.linear.x = fmodAng(fmodAng(currAngle)+(xValues[0]-320.0)*0.14375)*PI/180.0;
-                    thetasMessage.linear.y = fmodAng(fmodAng(currAngle)+(xValues[1]-320.0)*0.14375)*PI/180.0;
-                    thetasMessage.linear.z = fmodAng(fmodAng(currAngle)+(xValues[2]-320.0)*0.14375)*PI/180.0;
+                    thetasMessage.angular.x = angles[goodMatches[0]]*PI/180.0;
+                    thetasMessage.angular.y = angles[goodMatches[1]]*PI/180.0;
+                    thetasMessage.angular.z = angles[goodMatches[2]]*PI/180.0;
 
-                    currAngleLock.unlock();                
+                    float linearx = (currAngle+(xValues[0]-320.0)*0.14375)*PI/180.0;
+                    float lineary = (currAngle+(xValues[1]-320.0)*0.14375)*PI/180.0;
+                    float linearz = (currAngle+(xValues[2]-320.0)*0.14375)*PI/180.0;
+
+                    thetasMessage.linear.x = atan2(sin(linearx),cos(linearx));
+                    thetasMessage.linear.y = atan2(sin(lineary),cos(lineary));
+                    thetasMessage.linear.z = atan2(sin(linearz),cos(linearz));
+
+                    currAngleLock.unlock();
                     angleArrayLock.unlock();
+                    prevSum=currSum;
+                    
                 }
-
+                return;
             }
+
             for(int i=0; i<keypointsred.size();i++)
             {
                 for(int j=0;j<keypointsgreen.size();j++)
@@ -622,7 +640,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         
         }
 
-    }
+        thetasMessage.angular.x = 10;
+        thetasMessage.angular.y = 10;
+        thetasMessage.angular.z = 10;
+        thetasMessage.linear.x = 10;
+        thetasMessage.linear.y = 10;
+        thetasMessage.linear.z = 10;
+
+}
 
 
 
@@ -655,12 +680,12 @@ int main(int argc, char **argv)
             myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::app);
             for(int i=0;i<NUMLABELS;i++)
             {
-                if((int)angles[i]>=100)
-                    myfile<<(int)angles[i]<<",";
-                else if((int)angles[i]>=10)
-                    myfile<<"0"<<(int)angles[i]<<",";
+                if((int)angles[i]+360>=100)
+                    myfile<<(int)angles[i]+360<<",";
+                else if((int)angles[i]+360>=10)
+                    myfile<<"0"<<(int)angles[i]+360<<",";
                 else
-                    myfile<<"00"<<(int)angles[i]<<",";
+                    myfile<<"00"<<(int)angles[i]+360<<",";
 
             }
             myfile.close();

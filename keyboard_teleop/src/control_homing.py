@@ -46,6 +46,7 @@ class KeyboardController(DroneVideoDisplay):
 		super(KeyboardController,self).__init__()
 		self.x_vel=0.0
 		self.y_vel=0.0
+		self.yaw_vel=0.0
 		self.bool_homing=0
 		self.bool_reading=0
 		self.pitch = 0
@@ -115,9 +116,11 @@ class KeyboardController(DroneVideoDisplay):
 	def velCallback(self, msg):
 		self.x_vel=msg.linear.x
 		self.y_vel=msg.linear.y
+		self.yaw_vel=msg.angular.z
 		if self.bool_homing==1:
 			self.roll=self.x_vel
 			self.pitch=self.y_vel
+			self.yaw_velocity=self.yaw_vel
 		else:
 			self.roll=0
 			self.pitch=0
