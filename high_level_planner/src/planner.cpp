@@ -51,6 +51,7 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     currAngleLock.lock();
     cout<<"currAngle \t"<<currAngle<<endl;
     currAngleLock.unlock();
+
 	beta_21 = theta_2 - theta_1;
 	beta_21 = atan2(sin(beta_21),cos(beta_21));
 
@@ -102,8 +103,8 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     for(int i=0;i<3;i++)
     {
         currAngleLock.lock();
-        vel[0]+=0.6*(-MULT[i][0]*sin(currAngle)+MULT[i][1]*cos(currAngle));
-        vel[1]+=0.6*(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
+        vel[0]+=(-MULT[i][0]*sin(currAngle)+MULT[i][1]*cos(currAngle));
+        vel[1]+(=MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
         currAngleLock.unlock();
 
     }
@@ -112,7 +113,6 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     vel_lock.lock();
     vel_msg.linear.x=1.0*vel[0];
     vel_msg.linear.y=1.0*vel[1];
-    vel_msg.angular.z=0.0+(fabs(beta_21)<=0.001 && fabs(beta_32)<=0.001 && fabs(beta_13)<=0.001)*0.2;
     vel_lock.unlock();
 
     
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub = n.subscribe("thetaAngles", 30, angleCallback);
     ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("vels", 30);
     ros::Subscriber magSub = n.subscribe <geometry_msgs::Vector3Stamped>("/ardrone/mag", 100, magCallBack); 
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(30);
     while(ros::ok())
     {
         vel_lock.lock();

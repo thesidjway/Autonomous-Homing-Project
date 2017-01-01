@@ -30,6 +30,8 @@ class KeyMapping(object):
 	DecreaseAltitude = QtCore.Qt.Key.Key_A
 	Takeoff          = QtCore.Qt.Key.Key_Y
 	Land             = QtCore.Qt.Key.Key_H
+	YawLeft          = QtCore.Qt.Key.Key_W
+	YawRight         = QtCore.Qt.Key.Key_R
 	Emergency        = QtCore.Qt.Key.Key_Space
 	StartReading	 = QtCore.Qt.Key.Key_Z
 	StopReading	 	 = QtCore.Qt.Key.Key_X
@@ -44,16 +46,19 @@ class KeyboardController(DroneVideoDisplay):
 
 	def __init__(self):
 		super(KeyboardController,self).__init__()
+		self.prevvel=-10
 		self.x_vel=0.0
 		self.y_vel=0.0
-		self.yaw_vel=0.0
 		self.bool_homing=0
 		self.bool_reading=0
 		self.pitch = 0
 		self.roll = 0
 		self.yaw_velocity = 0 
 		self.z_velocity = 0
-		self.sub = rospy.Subscriber('vels', Twist, self.velCallback)
+		self.flyingStatus = 1
+		self.sub1 = rospy.Subscriber('vels', Twist, self.velCallback)
+		self.sub2 = rospy.Subscriber('flyingStatus', Int32, self.flyingCallback)
+
 
 # We add a keyboard handler to the DroneVideoDisplay to react to keypresses
 	def keyPressEvent(self, event):
@@ -70,6 +75,10 @@ class KeyboardController(DroneVideoDisplay):
 
 			else:
 				# Now we handle moving, notice that this section is the opposite (+=) of the keyrelease section
+				if key == KeyMapping.YawLeft:
+					self.yaw_velocity += 1
+				elif key == KeyMapping.YawRight:
+					self.yaw_velocity += -1
 				if key == KeyMapping.IncreaseAltitude:
 					self.z_velocity += 1
 				elif key == KeyMapping.DecreaseAltitude:
@@ -104,23 +113,38 @@ class KeyboardController(DroneVideoDisplay):
 				if key == KeyMapping.StopReading:
 					self.bool_reading=0
 
+			if key == KeyMapping.YawLeft:
+				self.yaw_velocity -= 1
+			elif key == KeyMapping.YawRight:
+				self.yaw_velocity -= -1
+
 
 			if key == KeyMapping.IncreaseAltitude:
 				self.z_velocity -= 1
 			elif key == KeyMapping.DecreaseAltitude:
 				self.z_velocity -= -1
 
+	def flyingCallback(self, msg):
+		self.flyingStatus=msg.data
+		if self.flyingStatus != self.prevvel:
+			self.yaw_velocity=0.0
+		self.prevvel=self.yaw_velocity
 			
 			
-
 	def velCallback(self, msg):
 		self.x_vel=msg.linear.x
 		self.y_vel=msg.linear.y
-		self.yaw_vel=msg.angular.z
+
 		if self.bool_homing==1:
+			if (abs(self.x_vel)<0.001 and abs(self.y_vel)<0.001):
+				if self.flyingStatus==3:
+					if abs(self.yaw_velocity)==0:
+						self.yaw_velocity=0.6
+
+
+ 
 			self.roll=self.x_vel
 			self.pitch=self.y_vel
-			self.yaw_velocity=self.yaw_vel
 		else:
 			self.roll=0
 			self.pitch=0

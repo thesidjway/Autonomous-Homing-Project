@@ -8,6 +8,7 @@
 #include "ardrone_autonomy/Navdata.h"
 #include <sensor_msgs/image_encodings.h>
 #include <image_transport/image_transport.h>
+#include <string>
 
 //opencv includes
 #include <opencv2/imgproc/imgproc.hpp>
@@ -48,6 +49,7 @@ int currStatus=IDLE;
 
 
 geometry_msgs::Twist thetasMessage; //message that contains theta angles used in planner wrt N of earth.
+std_msgs::Int32 flyingMessage;
 
 float fmodAng(float a)
 {
@@ -252,7 +254,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         Rect myROI(260,0,120,360);
         Rect myROI2(0,0,640,240);
-        Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite,dilatedblue;
+        Mat srcred1,srcred2,srcred,srcdark,srcblue,srcgreen,srcwhite,dilatedblue,initgreen;
         Mat detectionImgFull,detectionImg;
         Mat detectionImgHSV,detectionImgGray;
 
@@ -278,6 +280,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
             detectionImg=detectionImgFull(myROI2);
         }
 
+
+
         
         Mat element = getStructuringElement( MORPH_CROSS,
                                        Size( 2*erosion_size + 1, 2*erosion_size+1 ),
@@ -294,17 +298,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         inRange(detectionImgHSV,Scalar(170,50,40),Scalar(180,255,255),srcred2);
         bitwise_or(srcred1,srcred2,srcred);
 
-        inRange(detectionImgHSV,Scalar(55,40,20),Scalar(88,255,255),srcgreen);
+        inRange(detectionImgHSV,Scalar(55,40,20),Scalar(88,255,255),initgreen);
         inRange(detectionImgHSV,Scalar(108,40,20),Scalar(132,255,255),dilatedblue);
 
         inRange(detectionImgGray,0,99,srcdark);
         inRange(detectionImgGray,100,255,srcwhite);
 
         bitwise_and(srcdark,dilatedblue,dilatedblue);
-        bitwise_and(srcdark,srcgreen,srcgreen);
+        bitwise_and(srcdark,initgreen,initgreen);
         bitwise_and(srcdark,srcred,srcred);
 
         erode(dilatedblue,srcblue,element);
+
+        dilate(initgreen,srcgreen,element);
+
+
+        //imshow("GREEN",srcblue);
 
         SimpleBlobDetector::Params params;
 
@@ -312,7 +321,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         params.blobColor = 255;
         params.minThreshold = 200;
         params.filterByArea = true;
-        params.minArea = 50;
+        params.minArea = 30;
         params.filterByCircularity = false;
         params.filterByConvexity = true;
         params.minConvexity = 0.2;    
@@ -387,23 +396,25 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 line(detectionImgFull,Point(xValues[1], 20),Point(xValues[1], 340),Scalar(255,0,0),1,8,0);
                 line(detectionImgFull,Point(xValues[2], 20),Point(xValues[2], 340),Scalar(255,0,0),1,8,0);
 
+                putText(detectionImgFull, to_string(goodMatches[0]), Point(xValues[0], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
+                putText(detectionImgFull, to_string(goodMatches[1]), Point(xValues[1], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
+                putText(detectionImgFull, to_string(goodMatches[2]), Point(xValues[2], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
+
 
                 imshow("labelDetection",detectionImgFull);
 
 
-                //sort(goodMatches.begin(),goodMatches.end(),myfunction);
-                //sort(xValues.begin(),xValues.end(),myfunction);
+                sort(goodMatches.begin(),goodMatches.end(),myfunction);
+                sort(xValues.begin(),xValues.end(),myfunction);
 
-
-                cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
-
-                currSum=goodMatches[0]+goodMatches[1]+goodMatches[2];
 
                 
-                //if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] || (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
 
-                if(prevSum == -1 || currSum == prevSum)
-                {  
+
+                
+                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] && (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
+                {
+                    //cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
                     angleArrayLock.lock();
                     currAngleLock.lock();
 
@@ -411,20 +422,35 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     thetasMessage.angular.y = angles[goodMatches[1]]*PI/180.0;
                     thetasMessage.angular.z = angles[goodMatches[2]]*PI/180.0;
 
-                    float linearx = (currAngle+(xValues[0]-320.0)*0.14375)*PI/180.0;
-                    float lineary = (currAngle+(xValues[1]-320.0)*0.14375)*PI/180.0;
-                    float linearz = (currAngle+(xValues[2]-320.0)*0.14375)*PI/180.0;
+                    float linearx = (currAngle + (xValues[0]-320.0)*0.14375)*PI/180.0;
+                    float lineary = (currAngle + (xValues[1]-320.0)*0.14375)*PI/180.0;
+                    float linearz = (currAngle + (xValues[2]-320.0)*0.14375)*PI/180.0;
 
-                    thetasMessage.linear.x = atan2(sin(linearx),cos(linearx));
-                    thetasMessage.linear.y = atan2(sin(lineary),cos(lineary));
-                    thetasMessage.linear.z = atan2(sin(linearz),cos(linearz));
+                    thetasMessage.linear.x = atan2(sin(linearx) , cos(linearx));
+                    thetasMessage.linear.y = atan2(sin(lineary) , cos(lineary));
+                    thetasMessage.linear.z = atan2(sin(linearz) , cos(linearz));
+
+                    flyingMessage.data=1;
 
                     currAngleLock.unlock();
                     angleArrayLock.unlock();
-                    prevSum=currSum;
                     
+                    return;
                 }
-                return;
+
+                else
+                {
+                    thetasMessage.angular.x = 5;
+                    thetasMessage.angular.y = 5;
+                    thetasMessage.angular.z = 5;
+                    thetasMessage.linear.x = 5;
+                    thetasMessage.linear.y = 5;
+                    thetasMessage.linear.z = 5;
+                    flyingMessage.data=2;
+                    
+                    return;
+                }
+                
             }
 
             for(int i=0; i<keypointsred.size();i++)
@@ -596,7 +622,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                         }
                     }
                 }
-
             }
             for(int j=0;j<keypointsgreen.size();j++)
             {
@@ -637,7 +662,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     }
                 }
             }
-        
         }
 
         thetasMessage.angular.x = 10;
@@ -646,6 +670,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         thetasMessage.linear.x = 10;
         thetasMessage.linear.y = 10;
         thetasMessage.linear.z = 10;
+        flyingMessage.data=3;
+        return;
 
 }
 
@@ -663,6 +689,7 @@ int main(int argc, char **argv)
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback); 
   ros::Subscriber magSub = nh.subscribe <geometry_msgs::Vector3Stamped>("/ardrone/mag", 100, magCallBack); 
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
+  ros::Publisher flyingStatusPub = nh.advertise <std_msgs::Int32>("flyingStatus",100);
   ros::Rate loop_rate(20);
 
 
@@ -696,6 +723,7 @@ int main(int argc, char **argv)
     if(currStatus==HOMING)
     {
         homingTwistPub.publish(thetasMessage);
+        flyingStatusPub.publish(flyingMessage);
     }
     
     ros::spinOnce();
