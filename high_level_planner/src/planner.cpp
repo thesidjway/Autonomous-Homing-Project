@@ -104,15 +104,15 @@ void angleCallback(const geometry_msgs::Twist::ConstPtr& msg)
     {
         currAngleLock.lock();
         vel[0]+=(-MULT[i][0]*sin(currAngle)+MULT[i][1]*cos(currAngle));
-        vel[1]+(=MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
+        vel[1]+=(MULT[i][0]*cos(currAngle)+MULT[i][1]*sin(currAngle));
         currAngleLock.unlock();
 
     }
     cout<<"vels: \t\t"<<vel[0]<<" "<<vel[1]<<endl;
     
     vel_lock.lock();
-    vel_msg.linear.x=1.0*vel[0];
-    vel_msg.linear.y=1.0*vel[1];
+    vel_msg.linear.x=3.0*vel[0];
+    vel_msg.linear.y=3.0*vel[1];
     vel_lock.unlock();
 
     

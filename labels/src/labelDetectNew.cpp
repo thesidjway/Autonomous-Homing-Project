@@ -205,7 +205,23 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
 return -1;
 }
 
-bool myfunction (int i,int j) { return (i<j); }
+bool myfunction (int i,int j) 
+{ 
+    if(i==0 && j==NUMLABELS-1)
+        return (i>j);
+    else if(i==NUMLABELS-1 && j==0)
+        return (i>j);
+    else if(i==NUMLABELS-2 && j==0)
+        return (i>j);
+    else if(i==0 && j==NUMLABELS-2)
+        return (i>j);
+    else if(i==1 && j==NUMLABELS-1)
+        return (i>j);
+    else if(i==NUMLABELS-1 && j==1)
+        return (i>j);
+    else
+        return (i<j); 
+}
 
 void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
 {
@@ -309,6 +325,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         bitwise_and(srcdark,srcred,srcred);
 
         erode(dilatedblue,srcblue,element);
+        dilate(srcblue,srcblue,element);
 
         dilate(initgreen,srcgreen,element);
 
@@ -337,16 +354,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         detector.detect( srcblue, keypointsblue);
         detector.detect( srcgreen, keypointsgreen);
        
-        Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
 
-        
-        drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-        drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-        drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
 
         if(currStatus==READING)
         {
+            Mat im_with_keypoints_red,im_with_keypoints_white,im_with_keypoints_green,im_with_keypoints_blue;
+
+        
+            drawKeypoints( detectionImg, keypointsred, im_with_keypoints_red, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+            drawKeypoints( detectionImg, keypointsblue, im_with_keypoints_blue, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+            drawKeypoints( detectionImg, keypointsgreen, im_with_keypoints_green, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
             imshow("keypointsR", im_with_keypoints_red);
             imshow("keypointsG", im_with_keypoints_green);
             imshow("keypointsB", im_with_keypoints_blue);
