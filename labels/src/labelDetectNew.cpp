@@ -25,17 +25,16 @@
 #include <algorithm>
 #include <fstream>
 
-int prevAngle=-1;
-int haveRead= 0;
-int currSum=-1;
+int prevAngle=-1; 
+int haveRead= 0; //Reading from file mode started or not
 int prevSum=-1;
 
 #define IDLE 0
 #define READING 1
 #define HOMING 2
 #define READFROMFILE 3
-#define NUMLABELS 16
-#define erosion_size 1
+#define NUMLABELS 16 
+#define erosion_size 1 //change for more erosion
 
 #define PI 3.14159
 
@@ -45,22 +44,23 @@ using namespace std;
 float currAngle;
 mutex currAngleLock, angleArrayLock;
 int returned[5]={-1,-1,-1,-1,-1};
-int currStatus=IDLE;
+int currStatus=IDLE; //initialize state with IDLE
 
 
 geometry_msgs::Twist thetasMessage; //message that contains theta angles used in planner wrt N of earth.
-std_msgs::Int32 flyingMessage;
+std_msgs::Int32 flyingMessage; //message for displaying whether 3 labels are detected
 
-float fmodAng(float a)
+float fmodAng(float a) //not used
 {
     return (a<0)*360.0-(a>360)*360.0+a;
 }
-float dist(Point2f a1,Point2f a2)
+
+float dist(Point2f a1,Point2f a2) //dist between 2 points
 {
   return sqrt(pow(a2.x-a1.x,2)+pow(a2.y-a1.y,2));
 }
 
-int isnonzero(float* array, int arraysize)
+int isnonzero(float* array, int arraysize) //function to check if all elements are non zero, i.e. reading is complete
 {
     for(int i=0;i<arraysize;i++)
     {
@@ -72,7 +72,7 @@ int isnonzero(float* array, int arraysize)
     return 1;
 }
 
-int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector<KeyPoint> KB)
+int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector<KeyPoint> KB) //function to detect labels given 3 keypoints
 {
     for(int i=0;i<KR.size();i++)
     {
@@ -205,7 +205,7 @@ int detectPoster(std::vector<KeyPoint> KR, std::vector<KeyPoint> KG, std::vector
 return -1;
 }
 
-bool myfunction (int i,int j) 
+bool myfunction (int i,int j) //modified function to return opposite if 0, 14 & 0,15 etc are encountered.
 { 
     if(i==0 && j==NUMLABELS-1)
         return (i>j);
@@ -223,12 +223,18 @@ bool myfunction (int i,int j)
         return (i<j); 
 }
 
-void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
+
+bool myfunction2 (int i,int j) 
 {
-    currStatus=msg->data; 
+    return (i<j); 
 }
 
-void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg) 
+void statusCallBack(const std_msgs::Int32::ConstPtr& msg) 
+{
+    currStatus=msg->data; //currStatus from teleop code
+}
+
+void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg) //simply stores the current magnetometer readings and converts it into angles.
 {
   currAngleLock.lock();
   geometry_msgs::Vector3 magData=msg->vector;
@@ -238,14 +244,14 @@ void magCallBack(const geometry_msgs::Vector3Stamped::ConstPtr& msg)
   currAngleLock.unlock();
 }
 
-void imageCallback(const sensor_msgs::ImageConstPtr &msg) 
+void imageCallback(const sensor_msgs::ImageConstPtr &msg) //image processing callback function.
 { 
-        if(currStatus==IDLE)
+        if(currStatus==IDLE) //do nothing
         {
             return;
         }
 
-        if(currStatus==READFROMFILE)
+        if(currStatus==READFROMFILE) //read all angles from the txt file
         {
             angleArrayLock.lock();
             char data[65];
@@ -259,7 +265,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                 int ones=(int)data[4*a+2]-48;
                 int number=hund*100+tens*10+ones;
                 cout<<number<<endl;
-                angles[a]=number-360;
+                angles[a]=number-360; //stored all numbers added with 360, so subtract 360.
             }
             infile.close();
             cout<<"Done Reading!"<<endl;
@@ -278,7 +284,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         try
         {
-          cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+          cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8); 
         }
         catch (cv_bridge::Exception& e)
         {
@@ -289,7 +295,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         detectionImgFull=cv_ptr->image;
         if(currStatus==READING)
         {
-            detectionImg=detectionImgFull(myROI);
+            detectionImg=detectionImgFull(myROI); 
         }
         else if(currStatus==HOMING)
         {
@@ -301,7 +307,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         
         Mat element = getStructuringElement( MORPH_CROSS,
                                        Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-                                       Point( erosion_size, erosion_size ));
+                                       Point( erosion_size, erosion_size )); //3x3 element for erosion/dilation
 
 
 
@@ -334,7 +340,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
 
         SimpleBlobDetector::Params params;
 
-        params.filterByColor = true;
+        //check blob detector params link from readme file to know about this. 
+        params.filterByColor = true; 
         params.blobColor = 255;
         params.minThreshold = 200;
         params.filterByArea = true;
@@ -345,7 +352,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         params.filterByInertia = true;
         params.maxInertiaRatio = 0.85;
 
-        SimpleBlobDetector detector(params);
+        SimpleBlobDetector detector(params); 
 
         std::vector<KeyPoint> keypointsred,keypointsblue,keypointsgreen;
 
@@ -402,43 +409,43 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         }
         else if(currStatus==HOMING)
         {
-            int count=0;;
-            vector<int> goodMatches;
-            vector<int> xValues;
+            int count=0;
+            vector<int> goodMatches; //detected label numbers
+            vector<int> xValues; //xValues of the labels
            
-            start:
+            start: 
  
             if(count==3)
             {
-                line(detectionImgFull,Point(xValues[0], 20),Point(xValues[0], 340),Scalar(255,0,0),1,8,0);
+                line(detectionImgFull,Point(xValues[0], 20),Point(xValues[0], 340),Scalar(255,0,0),1,8,0); //to identify where labels are being detected
                 line(detectionImgFull,Point(xValues[1], 20),Point(xValues[1], 340),Scalar(255,0,0),1,8,0);
                 line(detectionImgFull,Point(xValues[2], 20),Point(xValues[2], 340),Scalar(255,0,0),1,8,0);
 
-                putText(detectionImgFull, to_string(goodMatches[0]), Point(xValues[0], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
+                putText(detectionImgFull, to_string(goodMatches[0]), Point(xValues[0], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8); //to identify what labels are being detected
                 putText(detectionImgFull, to_string(goodMatches[1]), Point(xValues[1], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
                 putText(detectionImgFull, to_string(goodMatches[2]), Point(xValues[2], 120), FONT_HERSHEY_PLAIN, 2, Scalar::all(255), 3, 8);
 
 
-                imshow("labelDetection",detectionImgFull);
+                imshow("labelDetection",detectionImgFull); 
 
 
-                sort(goodMatches.begin(),goodMatches.end(),myfunction);
-                sort(xValues.begin(),xValues.end(),myfunction);
-
-
-                
+                sort(goodMatches.begin(),goodMatches.end(),myfunction); //myfunction called only for this
+                sort(xValues.begin(),xValues.end(),myfunction2); //regular sorting using myfunction2
 
 
                 
-                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] && (goodMatches[1]+1)%NUMLABELS==goodMatches[2])
+
+
+                
+                if((goodMatches[0]+1)%NUMLABELS==goodMatches[1] && (goodMatches[1]+1)%NUMLABELS==goodMatches[2]) //only if 3 consecutive ones are encountered
                 {
                     //cout<<goodMatches[0]<<" "<<goodMatches[1]<<" "<<goodMatches[2]<<endl;
                     angleArrayLock.lock();
                     currAngleLock.lock();
 
-                    thetasMessage.angular.x = angles[goodMatches[0]]*PI/180.0;
-                    thetasMessage.angular.y = angles[goodMatches[1]]*PI/180.0;
-                    thetasMessage.angular.z = angles[goodMatches[2]]*PI/180.0;
+                    thetasMessage.angular.x = angles[goodMatches[0]]*PI/180.0; //storing data in message
+                    thetasMessage.angular.y = angles[goodMatches[1]]*PI/180.0; 
+                    thetasMessage.angular.z = angles[goodMatches[2]]*PI/180.0; 
 
                     float linearx = (currAngle + (xValues[0]-320.0)*0.14375)*PI/180.0;
                     float lineary = (currAngle + (xValues[1]-320.0)*0.14375)*PI/180.0;
@@ -448,7 +455,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     thetasMessage.linear.y = atan2(sin(lineary) , cos(lineary));
                     thetasMessage.linear.z = atan2(sin(linearz) , cos(linearz));
 
-                    flyingMessage.data=1;
+                    flyingMessage.data=1; //3 correct labels are identified, follow path 
 
                     currAngleLock.unlock();
                     angleArrayLock.unlock();
@@ -464,13 +471,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
                     thetasMessage.linear.x = 5;
                     thetasMessage.linear.y = 5;
                     thetasMessage.linear.z = 5;
-                    flyingMessage.data=2;
+                    flyingMessage.data=2; //3 labels are detected, but incorrectly. wait for correct labels.
                     
                     return;
                 }
                 
             }
 
+//really long set of for loops to find labels amidst all keypoints.
             for(int i=0; i<keypointsred.size();i++)
             {
                 for(int j=0;j<keypointsgreen.size();j++)
@@ -688,7 +696,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg)
         thetasMessage.linear.x = 10;
         thetasMessage.linear.y = 10;
         thetasMessage.linear.z = 10;
-        flyingMessage.data=3;
+        flyingMessage.data=3; //3 labels never encountered.
         return;
 
 }
@@ -707,7 +715,7 @@ int main(int argc, char **argv)
   image_transport::Subscriber sub = it.subscribe("ardrone/front/image_raw", 10, imageCallback); 
   ros::Subscriber magSub = nh.subscribe <geometry_msgs::Vector3Stamped>("/ardrone/mag", 100, magCallBack); 
   ros::Publisher homingTwistPub = nh.advertise <geometry_msgs::Twist>("thetaAngles",100); //it publishes the angles wrt north
-  ros::Publisher flyingStatusPub = nh.advertise <std_msgs::Int32>("flyingStatus",100);
+  ros::Publisher flyingStatusPub = nh.advertise <std_msgs::Int32>("flyingStatus",100); //publish the state of label detection
   ros::Rate loop_rate(20);
 
 
@@ -722,7 +730,7 @@ int main(int argc, char **argv)
             myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::out);
             myfile<<"";
             myfile.close();
-            myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::app);
+            myfile.open("/home/thesidjway/ardrone_ws/src/angles.txt", ios::app); //update the angles everytime reading is complete.
             for(int i=0;i<NUMLABELS;i++)
             {
                 if((int)angles[i]+360>=100)
@@ -741,7 +749,7 @@ int main(int argc, char **argv)
     if(currStatus==HOMING)
     {
         homingTwistPub.publish(thetasMessage);
-        flyingStatusPub.publish(flyingMessage);
+        flyingStatusPub.publish(flyingMessage); //required only when homing is active.
     }
     
     ros::spinOnce();

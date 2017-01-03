@@ -7,15 +7,16 @@ global u;
 
 Tsamp = 1;
 
-
+detM=[];
+detU=[];
 X0 = [0  -20]';
 
-G = [0 40]';
+G = [20 -60]';
 u = [0 0]';
  
-L1 = [-20 80]';
-L2 = [10 80]';
-L3 = [20 80]';
+L1 = [-52 42]';
+L2 = [12 82]';
+L3 = [-22 -50]';
 
 theta_1 = atan2(L1(2)- G(2), L1(1)-G(1));
 theta_2 = atan2(L2(2)- G(2), L2(1)-G(1));
@@ -60,9 +61,11 @@ for k=1:3000
         0 cos(beta_32/2)*(beta_32 - beta_32s) cos(beta_32/2)*(beta_32 - beta_32s)];
     N = [OP1 OP2 OP3]';
     
+    detM=[detM det(M)];
     V = 2.*M*N;
     
-    u = (V(1,:) + V(2,:) +V(3,:))'
+    u = -(V(1,:) + V(2,:) +V(3,:))'
+    
     
     path = [path X(end,:)'];
     
@@ -72,6 +75,7 @@ for k=1:3000
     
 end
 
-figure(1); plot(path(1,:),path(2,:)); hold on;
+figure(1); plot(path(1,:),path(2,:)); axis('equal'); hold on;
+figure(2); plot(detM); 
 
 
