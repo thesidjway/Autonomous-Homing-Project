@@ -1,5 +1,5 @@
 # Autonomous-Homing-Project
-Codes, Papers and resources for the autonomous homing project
+Codes, Papers and resources for the autonomous homing project. Check out [this video](https://www.youtube.com/watch?v=C7D_XyawbXE) for a demonstration and [this link](http://sidj.in/portfolios/autonomous-visual-homing-project/) for project details.
 
 ###Resources
 1. [ROS driver for AR Drone](https://github.com/AutonomyLab/ardrone_autonomy)
